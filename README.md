@@ -110,29 +110,6 @@ Deezer. If either service is down, that part of the page simply stays empty.
 If the key only allows your live site, search does not work when you run the site on
 `localhost`. Add `http://localhost:*/*` to the key's allowed websites if you want that.
 
-## Controls on the lock screen and notification bar
-
-A phone cannot keep playing the video once it leaves the browser: YouTube blocks background
-playback in mobile browsers unless the viewer has Premium, and iPhones pause embedded video
-when the app goes to the background. So the music belongs on a laptop, tablet or TV, and
-phones are remotes.
-
-A phone that is not playing the music can still show the song with pause, next and a seek bar
-on its lock screen or notification bar, and those buttons control the whole party. Press the
-small phone button next to the sun or moon at the top. While it is on, the page loops a silent
-sound so the phone keeps the page running and the notification alive. Things to know:
-
-- It is off until someone switches it on, and the app remembers the choice on that device.
-  After a reload the silent sound waits for the first tap, because browsers require one.
-- The silent sound can make the phone pause other audio (a music app, a podcast) while the
-  party page is open. Switch the button off to give audio back.
-- The button is hidden on the device that plays the music, and it switches itself off there if
-  the music is moved to that device.
-- It uses the browser's Media Session feature. It has been tested for what the page sends to
-  the notification and what the buttons do. How it looks on a given phone's lock screen, and
-  whether it keeps working with the screen off, depends on the phone and browser and has not
-  been checked on a real device.
-
 ## Good to know
 
 - Use a laptop, tablet, or TV browser as the playing device. Phones stop YouTube playback
