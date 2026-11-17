@@ -658,35 +658,28 @@ input[type="text"]::placeholder { color: var(--text-3); }
 
 /* ---------- the theme chooser, inside the profile dialog ---------- */
 .theme-sec { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
-.theme-sec h3 { margin: 0 0 2px; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
-.theme-sec > .hint { margin-bottom: 4px; }
-.theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.theme-sec h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+.theme-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .theme-card {
-  display: grid; gap: 8px; padding: 8px 8px 10px; text-align: left;
-  background: none; border: 2px solid transparent; border-radius: 16px;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  display: grid; justify-items: center; gap: 8px; padding: 10px 2px 8px;
+  background: none; border: 0; border-radius: 14px;
+  transition: background-color 0.12s ease;
 }
 .theme-card:hover { background: var(--hover); }
-.theme-card[aria-checked="true"] { border-color: var(--accent-text); background: var(--hover); }
-.theme-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; font-size: 14px; font-weight: 700; }
-.theme-name small { font-size: 12px; font-weight: 600; color: var(--text-2); }
-/* A small picture of a theme, painted with that theme's own tokens: the ground with its two lights, a panel,
-   a title, a quiet line and the accent. */
+.theme-name { font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; color: var(--text-2); }
+.theme-card[aria-checked="true"] .theme-name { color: var(--text); font-weight: 700; }
+/* A theme in one dot: its ground with its two lights, and its accent in the middle. Painted with that theme's
+   own tokens. The one that is picked gets a ring. */
 .theme-swatch {
-  position: relative; display: block; height: 84px; border-radius: 10px; overflow: hidden;
+  position: relative; display: block; width: 44px; height: 44px; border-radius: 50%;
   background:
-    radial-gradient(90% 110% at 0% 0%, var(--glow-a), transparent 62%),
-    radial-gradient(80% 100% at 100% 0%, var(--glow-b), transparent 60%),
+    radial-gradient(90% 90% at 10% 10%, var(--glow-a), transparent 70%),
+    radial-gradient(90% 90% at 90% 10%, var(--glow-b), transparent 70%),
     var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
-.theme-swatch i { position: absolute; display: block; }
-.theme-swatch .sw-panel { left: 10px; right: 10px; top: 16px; bottom: 10px; border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--glass-edge); }
-.theme-swatch .sw-title { left: 20px; top: 27px; width: 46%; height: 7px; border-radius: 4px; background: var(--text); }
-.theme-swatch .sw-quiet { left: 20px; top: 41px; width: 30%; height: 5px; border-radius: 3px; background: var(--text-2); }
-.theme-swatch .sw-bar { left: 20px; right: 46px; bottom: 21px; height: 3px; border-radius: 2px; background: var(--hover-2); }
-.theme-swatch .sw-bar::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 45%; border-radius: 2px; background: var(--bar); }
-.theme-swatch .sw-dot { right: 18px; bottom: 14px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); }
+.theme-swatch::after { content: ""; position: absolute; inset: 13px; border-radius: 50%; background: var(--accent); }
+.theme-card[aria-checked="true"] .theme-swatch { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 
 /* ---------- toasts ---------- */
 #toasts {

@@ -184,21 +184,14 @@ window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change'
 // The theme chooser. It sits in the profile dialog, under the name and avatar. A pick applies at once and is kept
 // on this device. It does not wait for "Save changes", which is only for the name, avatar and device.
 function themeSectionHTML() {
-  const pal = paletteNow(), mode = themeNow(), cur = PALETTES[pal];
-  const cards = Object.entries(PALETTES).map(([id, t]) => `
-    <button type="button" class="theme-card" role="radio" aria-checked="${id === pal}" data-act="pick-palette" data-palette="${id}">
-      <span class="theme-swatch" data-palette="${id}" data-theme="${t.modes.includes(mode) ? mode : t.modes[0]}" aria-hidden="true"><i class="sw-panel"></i><i class="sw-title"></i><i class="sw-quiet"></i><i class="sw-bar"></i><i class="sw-dot"></i></span>
-      <span class="theme-name">${esc(t.name)}${id === 'classic' ? '<small>Default</small>' : ''}</span>
-    </button>`).join('');
-  const modes = cur.modes.length > 1
-    ? `<p class="hint">${esc(cur.name)} has a light and a dark mode. Switch with the sun or moon button beside your avatar.</p>`
-    : `<p class="hint">${esc(cur.name)} has one look, so there is no light mode.</p>`;
+  const pal = paletteNow(), mode = themeNow();
   return `
     <h3 id="theme-title">Theme</h3>
-    <p class="hint">How the party looks on this device. Everyone else keeps their own choice.</p>
-    <div class="theme-grid" role="radiogroup" aria-labelledby="theme-title">${cards}</div>
-    ${modes}
-    <p class="hint">${cur.song === 'none' ? 'Classic keeps its own colours. The other themes take colours from the song that is playing.' : `${esc(cur.name)} takes colours from the song that is playing.`}</p>`;
+    <div class="theme-grid" role="radiogroup" aria-labelledby="theme-title">${Object.entries(PALETTES).map(([id, t]) => `
+      <button type="button" class="theme-card" role="radio" aria-checked="${id === pal}" data-act="pick-palette" data-palette="${id}">
+        <span class="theme-swatch" data-palette="${id}" data-theme="${t.modes.includes(mode) ? mode : t.modes[0]}" aria-hidden="true"></span>
+        <span class="theme-name">${esc(t.name)}</span>
+      </button>`).join('')}</div>`;
 }
 
 // Redraws only the theme part, so a name or photo that is being edited above it is not lost.
