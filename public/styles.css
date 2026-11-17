@@ -22,7 +22,7 @@
   --glass: rgba(22, 22, 24, 0.58);        /* frosted panels */
   --glass-edge: rgba(255, 255, 255, 0.10);
   --sheet: rgba(30, 30, 33, 0.86);        /* dialogs */
-  --menu: #2A2A2D;                        /* song menus */
+  --menu: #2A2A2D;                        /* the prediction list */
   --hover: rgba(255, 255, 255, 0.07);     /* rows and inner surfaces */
   --hover-2: rgba(255, 255, 255, 0.14);
   --field: rgba(255, 255, 255, 0.09);
@@ -119,8 +119,6 @@ a { color: inherit; text-underline-offset: 3px; }
   backdrop-filter: var(--blur);
   box-shadow: var(--shadow);
 }
-/* Menus open on top of a glass panel, where a second layer of blur has nothing to work with, so they are solid. */
-.menu-pop { background: var(--menu); border: 1px solid var(--line); box-shadow: var(--shadow); }
 
 /* ---------- avatars ---------- */
 .av {
@@ -407,8 +405,6 @@ input[type="text"]::placeholder { color: var(--text-3); }
 }
 .queue[data-more-up], .results.scroll[data-more-up] { --fade-up: 36px; }
 .queue[data-more-down], .results.scroll[data-more-down] { --fade-down: 36px; }
-/* An open song menu hangs outside the list, and a mask would hide it. */
-.queue:has(details[open]) { -webkit-mask-image: none; mask-image: none; }
 .queue { max-height: min(46vh, 420px); }
 .results.scroll { max-height: min(56vh, 520px); }
 .recs { margin-top: 28px; }
@@ -451,18 +447,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .grip { cursor: grab; touch-action: none; }
 .ticket-ghost { opacity: 0.35; }
 .ticket-chosen { background: var(--hover-2); }
-.menu { position: relative; }
-.menu summary { list-style: none; cursor: pointer; }
-.menu summary::-webkit-details-marker { display: none; }
-/* Placed by the app when it opens (see the toggle listener in app.js), so the scrolling queue cannot clip it. */
-.menu-pop {
-  position: fixed; z-index: 5; min-width: 168px; visibility: hidden;
-  display: grid; padding: 6px; border-radius: 12px;
-}
-.menu-pop.placed { visibility: visible; }
-.menu-pop button { background: none; border: 0; border-radius: 8px; padding: 10px 12px; text-align: left; font-size: 14px; font-weight: 600; }
-.menu-pop button:hover { background: var(--hover-2); }
-.menu-pop .danger { color: var(--danger); }
+.icon-danger:hover, .icon-danger:focus-visible { color: var(--danger); }
 
 /* ---------- dialogs ---------- */
 .dlg {

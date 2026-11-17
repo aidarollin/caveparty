@@ -31,7 +31,7 @@ const ICON = {
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
   skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14l9-7zM16 5h3v14h-3z"/></svg>',
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>',
-  more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 12.1a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9zm4 2v8h2v-8zm4 0v8h2v-8z"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
@@ -717,15 +717,8 @@ function renderQueue() {
           <div class="tk-main">${thumb}<div class="tk-text"><p class="tk-title">${esc(i.title || 'YouTube video')}</p>
             <p class="tk-meta"><span class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(i.by)?.avatar, 'av-s')}<span class="stub-name">${esc(who)}</span></span>${i.channel ? `<span class="tk-ch">${esc(i.channel)}</span>` : ''}</p></div></div>
           <div class="tk-actions">
-            <button class="icon grip" aria-label="Drag to reorder">${ICON.grip}</button>
-            <details class="menu">
-              <summary class="icon" aria-label="More actions for ${esc(i.title || 'this song')}">${ICON.more}</summary>
-              <div class="menu-pop">
-                ${idx > 0 ? `<button data-act="q-next" data-id="${esc(i.id)}">Play next</button><button data-act="q-up" data-id="${esc(i.id)}">Move up</button>` : ''}
-                ${idx < items.length - 1 ? `<button data-act="q-down" data-id="${esc(i.id)}">Move down</button>` : ''}
-                <button class="danger" data-act="q-remove" data-id="${esc(i.id)}">Remove</button>
-              </div>
-            </details>
+            <button class="icon grip" aria-label="Move ${esc(i.title || 'this song')}. Drag, or press the up and down arrow keys." title="Drag to reorder">${ICON.grip}</button>
+            <button class="icon icon-danger" data-act="q-remove" data-id="${esc(i.id)}" aria-label="Remove ${esc(i.title || 'this song')} from the queue" title="Remove from the queue">${ICON.trash}</button>
           </div>
         </li>`;
     }).join('');
@@ -1472,9 +1465,6 @@ const ACTIONS = {
     const to = Math.max(0, Math.min(dur - 1, ((e.clientX - rect.left) / rect.width) * dur));
     S.store.update(`${base()}/q`, { seek: { to, id: q.now.id, n: S.store.now() }, pos: to, posAt: S.store.now(), posId: q.now.id }).catch(() => {});
   },
-  'q-next': (el) => moveTo(el.dataset.id, 0),
-  'q-up': (el) => { const i = sortedItems().findIndex((x) => x.id === el.dataset.id); if (i > 0) moveTo(el.dataset.id, i - 1); },
-  'q-down': (el) => { const l = sortedItems(), i = l.findIndex((x) => x.id === el.dataset.id); if (i > -1 && i < l.length - 1) moveTo(el.dataset.id, i + 1); },
   'q-remove': (el) => S.store.remove(`${base()}/q/items/${el.dataset.id}`).then(() => toast('Removed from the queue')).catch(() => {}),
   'add-result': async (el) => {
     el.disabled = true;
@@ -1508,8 +1498,6 @@ const ACTIONS = {
 };
 
 document.addEventListener('click', (e) => {
-  // Close any open song menu when clicking elsewhere.
-  document.querySelectorAll('details.menu[open]').forEach((d) => { if (!d.contains(e.target) || e.target.closest('.menu-pop button')) d.removeAttribute('open'); });
   if (e.target.id === 'dlg') return closeDialog(); // click on the backdrop
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
@@ -1517,23 +1505,19 @@ document.addEventListener('click', (e) => {
   if (fn) fn(el, e);
 });
 
-// Song menus are placed by hand, so the scrolling queue box cannot cut them off.
-const closeMenus = () => document.querySelectorAll('details.menu[open]').forEach((d) => d.removeAttribute('open'));
-document.addEventListener('toggle', (e) => {
-  const d = e.target;
-  if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('menu')) return;
-  const pop = $('.menu-pop', d);
-  if (!d.open) { pop.classList.remove('placed'); return; }
-  const r = $('summary', d).getBoundingClientRect();
-  pop.style.left = pop.style.top = '0px';
-  const o = pop.getBoundingClientRect(); // where "0, 0" lands for this menu: the corner of its glass panel, not of the window
-  const up = window.innerHeight - r.bottom < o.height + 12 && r.top > o.height + 12;
-  pop.style.left = `${r.right - o.width - o.left}px`;
-  pop.style.top = `${(up ? r.top - o.height - 2 : r.bottom + 2) - o.top}px`;
-  pop.classList.add('placed');
-}, true);
-document.addEventListener('scroll', (e) => { closeMenus(); if (e.target instanceof Element && e.target.matches('.queue, .results.scroll')) refreshFades(); }, true);
-window.addEventListener('resize', () => { closeMenus(); refreshFades(); });
+document.addEventListener('scroll', (e) => { if (e.target instanceof Element && e.target.matches('.queue, .results.scroll')) refreshFades(); }, true);
+window.addEventListener('resize', refreshFades);
+
+// Keyboard way to reorder: with the grip focused, the up and down arrows move the song one place.
+document.addEventListener('keydown', (e) => {
+  const grip = e.target.closest?.('.grip');
+  if (!grip || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const id = grip.closest('.ticket').dataset.id, list = sortedItems(), i = list.findIndex((x) => x.id === id);
+  const to = i + (e.key === 'ArrowUp' ? -1 : 1);
+  if (i < 0 || to < 0 || to >= list.length) return;
+  moveTo(id, to).then(() => requestAnimationFrame(() => $(`#queue [data-id="${CSS.escape(id)}"] .grip`)?.focus()));
+});
 // Escape tucks the history away when it is covering the page.
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && histOpen && !histWide() && !$('#dlg').open) toggleHist(false); });
 
