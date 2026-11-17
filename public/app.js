@@ -230,18 +230,20 @@ function setArt(videoId) {
 
 /* ---------- avatars ---------- */
 
-const PRESETS = [
-  ['🦊', '#FFB870'], ['🐼', '#CFF3E3'], ['🐸', '#C2F296'], ['🦁', '#FFD338'],
-  ['🐙', '#FFA3B1'], ['🦄', '#E4CCFF'], ['🐧', '#BEE2FF'], ['🐯', '#FFC489'],
-  ['🐨', '#D6DCEA'], ['🦉', '#EACDA6'], ['🐵', '#F6D3BA'], ['🐳', '#A3E5F6']
-];
+// The preset avatars are a set of meme doodles, drawn in avatars.js. They are put into the page once, as a hidden
+// sheet of drawings, and every avatar on screen points at its drawing there. A profile stores "p:" plus the
+// position of the doodle in the set.
+const DOODLES = window.PARTY_DOODLES || [];
+document.body.insertAdjacentHTML('afterbegin', `<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">${DOODLES.map((d, i) => `<symbol id="doodle-${i}" viewBox="0 0 64 64">${d.art}</symbol>`).join('')}</svg>`);
+const doodleIndex = (av) => { const i = parseInt(String(av || '').slice(2), 10); return DOODLES[i] ? i : 0; };
 
 function avatarHTML(av, cls = '') {
   if (typeof av === 'string' && av.startsWith('data:image/')) {
     return `<span class="av ${cls}"><img src="${esc(av)}" alt=""></span>`;
   }
-  const p = PRESETS[parseInt(String(av || '').slice(2), 10)] || PRESETS[0];
-  return `<span class="av ${cls}" style="--av:${p[1]}"><span aria-hidden="true">${p[0]}</span></span>`;
+  const i = doodleIndex(av), d = DOODLES[i];
+  if (!d) return `<span class="av ${cls}"></span>`; // avatars.js did not load: a plain circle
+  return `<span class="av ${cls}" style="--av:${d.bg}"><svg class="doodle" viewBox="0 0 64 64" aria-hidden="true"><use href="#doodle-${i}"/></svg></span>`;
 }
 
 async function fileToAvatar(file) {
@@ -451,7 +453,7 @@ function shell(inner) {
 function profileFormHTML(p, cta) {
   const av = p.avatar || 'p:0';
   const isPhoto = av.startsWith('data:image/');
-  const tiles = PRESETS.map((_, i) => `<button type="button" class="av-pick" role="radio" aria-checked="${!isPhoto && av === 'p:' + i}" data-av="p:${i}" aria-label="Avatar ${i + 1}">${avatarHTML('p:' + i, 'av-l')}</button>`).join('');
+  const tiles = DOODLES.map((d, i) => `<button type="button" class="av-pick" role="radio" aria-checked="${!isPhoto && av === 'p:' + i}" data-av="p:${i}" aria-label="${esc(d.name)}" title="${esc(d.name)}">${avatarHTML('p:' + i, 'av-l')}</button>`).join('');
   return `
     <form class="pf" id="pf" novalidate>
       <div class="field">
@@ -480,7 +482,7 @@ function profileFormHTML(p, cta) {
 }
 
 function bindProfileForm(root, initial, onSave) {
-  let avatar = initial.avatar || 'p:' + Math.floor(Math.random() * PRESETS.length);
+  let avatar = initial.avatar || 'p:' + Math.floor(Math.random() * Math.max(1, DOODLES.length));
   const mark = () => {
     root.querySelectorAll('.av-pick[data-av]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.av === avatar)));
     $('#pf-photo-tile', root).setAttribute('aria-checked', String(avatar.startsWith('data:image/')));

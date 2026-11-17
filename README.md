@@ -8,8 +8,9 @@ see who queued what.
 
 ## What it does
 
-- People enter a name and pick an avatar (or use their own photo) the first time. The same
-  device remembers them next time, and they can change both from the avatar button.
+- People enter a name and pick an avatar the first time: one of twelve meme doodles, or
+  their own photo. The same device remembers them next time, and they can change both from
+  the avatar button.
 - One device plays the songs. Everyone sees whose device it is and can move the music to
   any other device in the party.
 - Everyone can search for a song by title, artist or lyrics and add it, drag to reorder,
@@ -137,6 +138,7 @@ If the key only allows your live site, search does not work when you run the sit
 public/index.html        page shell, sets the saved theme before the first paint
 public/styles.css        colour tokens for every theme, and all styling
 public/music-color.js    reads the song artwork and does the colour maths (brand kit, unchanged)
+public/avatars.js        the preset avatars: twelve meme doodles, drawn for this app
 public/favicon.*, icon-*.png, apple-touch-icon.png, site.webmanifest, cave-party-*.svg
                          the disco ball: browser tab, home screen icons and source artwork
 public/app.js            the whole app (profile, party, queue, player)
@@ -197,6 +199,14 @@ Choices that keep quiet text readable for every song, in every theme:
 - The icon in the top left corner uses the main text colour, because the lights and the
   artwork are strongest there.
 - App colours lets less of the artwork through, because its ground is bright already.
+
+### Avatars
+
+The preset avatars are meme doodles in the hand-drawn sticker style: a thick wobbly outline,
+flat colours and a silly face. All twelve are original drawings made for this app and live
+in `public/avatars.js` as small SVG pictures. A profile stores its pick as a position in that
+list, so add new doodles at the end. Moving or removing one changes the face of everyone who
+picked it.
 
 ## How the data is shaped
 

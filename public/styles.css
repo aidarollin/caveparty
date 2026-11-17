@@ -304,6 +304,7 @@ a { color: inherit; text-underline-offset: 3px; }
   font-size: calc(var(--sz) * 0.56); line-height: 1;
 }
 .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av .doodle { width: 100%; height: 100%; display: block; }
 .av-s { --sz: 24px; }
 .av-m { --sz: 40px; }
 .av-l { --sz: 52px; }
