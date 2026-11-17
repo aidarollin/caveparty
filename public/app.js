@@ -960,10 +960,10 @@ const DEEZER = 'https://api.deezer.com';
 
 // "Queen – Bohemian Rhapsody (Official Video Remastered)" -> "Queen Bohemian Rhapsody"
 const cleanSongTitle = (t) => String(t || '')
-  .replace(/\([^)]*\)|\[[^\]]*\]|【[^】]*】/g, ' ')
+  .replace(/\([^)]*\)|\[[^\]]*\]|\u3010[^\u3011]*\u3011/g, ' ')
   .replace(/\bofficial\s+(music\s+|lyric\s+|hd\s+)?(video|audio)\b|\blyrics?\s*(video)?\s*$|\bm\/v\b|\b(hd|4k)\b/gi, ' ')
   .replace(/\b(ft|feat|featuring)\b\.?\s.*$/i, ' ')
-  .replace(/[-–—|:"]+/g, ' ').replace(/\s+/g, ' ').trim();
+  .replace(/[-\u2013\u2014|:"]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 async function loadRecs() {
   const now = S.room?.q?.now;
