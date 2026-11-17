@@ -34,6 +34,8 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 12.1a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9zm4 2v8h2v-8zm4 0v8h2v-8z"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.6 8l-1.4-1.4z"/></svg>',
@@ -64,12 +66,20 @@ const savedTheme = () => { try { const t = localStorage.getItem(THEME_KEY); retu
 // Follow the system setting until someone picks a mode on this device.
 const wantedMode = () => savedTheme() || (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
+const modeLabel = () => `Switch to ${themeNow() === 'light' ? 'dark' : 'light'} mode`;
+const modeButtonHTML = () => `<button class="icon" data-act="mode" aria-label="${modeLabel()}" title="${modeLabel()}"${PALETTES[paletteNow()].modes.length < 2 ? ' hidden' : ''}>${themeNow() === 'light' ? ICON.moon : ICON.sun}</button>`;
+function syncModeButtons() {
+  const two = PALETTES[paletteNow()].modes.length > 1;
+  document.querySelectorAll('[data-act="mode"]').forEach((b) => { b.hidden = !two; b.innerHTML = themeNow() === 'light' ? ICON.moon : ICON.sun; b.setAttribute('aria-label', modeLabel()); b.title = modeLabel(); });
+}
+
 function applyLook(palette = paletteNow(), mode = wantedMode()) {
   const id = PALETTES[palette] ? palette : 'classic';
   root.dataset.palette = id;
   root.dataset.theme = PALETTES[id].modes.includes(mode) ? mode : PALETTES[id].modes[0];
   refreshRoom(); // the colours taken from the song are made again for this theme
   $('meta[name="theme-color"]')?.setAttribute('content', restTokens().raw['--bg']); // the browser bar takes the resting page colour
+  syncModeButtons();
 }
 
 /* ---------- the room takes its colour from the song ---------- */
@@ -181,8 +191,7 @@ function themeSectionHTML() {
       <span class="theme-name">${esc(t.name)}${id === 'classic' ? '<small>Default</small>' : ''}</span>
     </button>`).join('');
   const modes = cur.modes.length > 1
-    ? `<div class="mode-row"><span class="label" id="mode-label">Mode</span>
-        <div class="seg" role="radiogroup" aria-labelledby="mode-label">${cur.modes.map((m) => `<button type="button" role="radio" aria-checked="${m === mode}" data-act="pick-mode" data-mode="${m}">${m === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div></div>`
+    ? `<p class="hint">${esc(cur.name)} has a light and a dark mode. Switch with the sun or moon button beside your avatar.</p>`
     : `<p class="hint">${esc(cur.name)} has one look, so there is no light mode.</p>`;
   return `
     <h3 id="theme-title">Theme</h3>
@@ -436,7 +445,7 @@ function setPartyParam(code) {
 }
 
 function shell(inner) {
-  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><img class="brand-mark" src="favicon.svg" alt="" width="28" height="28">Cave Party</p></header>${inner}</main>`;
+  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><img class="brand-mark" src="favicon.svg" alt="" width="28" height="28">Cave Party</p>${modeButtonHTML()}</header>${inner}</main>`;
 }
 
 function profileFormHTML(p, cta) {
@@ -656,6 +665,7 @@ function mountRoom() {
         <div class="top-actions">
           <button class="people-chip" data-act="people" id="people-chip"></button>
           <button class="btn primary small" data-act="invite">Invite</button>
+          ${modeButtonHTML()}
           <button class="me-btn" data-act="edit-profile" id="me-btn" aria-label="Your profile and theme" title="Your profile and theme"></button>
         </div>
       </header>
@@ -1590,7 +1600,7 @@ const ACTIONS = {
   'set-player': (el) => { setPlayer(el.dataset.uid); closeDialog(); },
   tap: () => { showTap(false); P.tapTried = true; try { P.yt.playVideo(); } catch { /* player gone */ } armTapCheck(); },
   'pick-palette': (el) => { pickLook(el.dataset.palette); renderThemeSection('.theme-card[aria-checked="true"]'); },
-  'pick-mode': (el) => { pickLook(paletteNow(), el.dataset.mode); renderThemeSection('.seg [aria-checked="true"]'); },
+  mode: () => pickLook(paletteNow(), themeNow() === 'light' ? 'dark' : 'light'),
   toggle: () => {
     const q = S.room?.q || {};
     if (!q.now) return;

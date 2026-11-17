@@ -417,7 +417,8 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .party-name svg { width: 18px; height: 18px; flex: none; opacity: 0; color: var(--text-2); transition: opacity 0.12s ease; }
 .party-name:hover svg, .party-name:focus-visible svg { opacity: 1; }
 @media (hover: none) { .party-name svg { opacity: 0.7; } }
-.top-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.top-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.people-chip { white-space: nowrap; flex: none; }
 /* These two icons sit on the bare ground in the top corners, where the lights and the artwork are strongest.
    Quiet colour does not hold there, so they take the main text colour. */
 .top .icon { color: var(--text); }
@@ -685,10 +686,6 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .theme-swatch .sw-bar { left: 20px; right: 46px; bottom: 21px; height: 3px; border-radius: 2px; background: var(--hover-2); }
 .theme-swatch .sw-bar::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 45%; border-radius: 2px; background: var(--bar); }
 .theme-swatch .sw-dot { right: 18px; bottom: 14px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); }
-.mode-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-.seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--hover); }
-.seg button { min-height: 36px; padding: 4px 16px; background: none; border: 0; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--text-2); transition: background-color 0.12s ease, color 0.12s ease; }
-.seg button[aria-checked="true"] { background: var(--text); color: var(--bg); }
 
 /* ---------- toasts ---------- */
 #toasts {

@@ -28,8 +28,9 @@ see who queued what.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
 - Invite people with a link, a QR code, or a five-letter party code.
-- Four themes, two of them with a light and a dark mode, chosen in the profile dialog and
-  remembered on that device. See "Themes" below.
+- Four themes, chosen in the profile dialog, and a sun or moon button beside the avatar for
+  light and dark mode (two themes have both). Both are remembered on that device. See
+  "Themes" below.
 
 ## Try it on your computer first (no setup)
 
@@ -157,6 +158,9 @@ Each person picks a theme for their own device. It is in the profile dialog (the
 at the top, or Edit on the start screen), under the name and avatar. A pick applies at once
 and is remembered on that device. Other people keep their own choice.
 
+The light and dark switch is the sun or moon button right beside the avatar (and at the top
+of the start screens). It is hidden for the two themes that have only one look.
+
 | Theme | Look | Light mode | Takes colours from the song |
 | --- | --- | --- | --- |
 | Classic (the default) | Near black with a green accent | Yes | No |
@@ -164,7 +168,7 @@ and is remembered on that device. Other people keep their own choice.
 | App colours | Cobalt with sun yellow, the colours the app started with | No | Yes |
 | Night market | Plum night with pink neon and a lantern light | No | Yes |
 
-Until someone picks a mode, the app follows the light or dark setting of the device. Titles
+Until someone presses that button, the app follows the light or dark setting of the device. Titles
 use the same typeface (Figtree) in every theme.
 
 Every colour is a token at the top of `public/styles.css`, one block per theme and mode, all
