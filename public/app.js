@@ -1096,14 +1096,13 @@ function renderRecs() {
   once('recs', JSON.stringify(fresh.map((r) => r.key)), () => {
     box.hidden = !fresh.length;
     box.innerHTML = !fresh.length ? '' : `
-      <div class="q-head">
-        <div><h2 class="q-title">Suggested next</h2><p class="sub">Picked to go with what is playing.</p></div>
-        <button class="btn line small" data-act="more-recs" title="Show a new random set of suggestions">${ICON.shuffle}Randomize</button>
-      </div>
+      <h2 class="q-title">Suggested next</h2>
+      <p class="sub">Picked to go with what is playing.</p>
       <ul class="results">${fresh.map((r) => `
         <li>${/^https:\/\//.test(r.cover) ? `<img src="${esc(r.cover)}" alt="" loading="lazy">` : ''}
           <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${esc(r.artist)}</p></div>
-          <button class="btn line small" data-act="add-rec" data-key="${esc(r.key)}" data-q="${esc(r.artist + ' ' + r.title)}">Add</button></li>`).join('')}</ul>`;
+          <button class="btn line small" data-act="add-rec" data-key="${esc(r.key)}" data-q="${esc(r.artist + ' ' + r.title)}">Add</button></li>`).join('')}</ul>
+      <button class="btn line small wide recs-more" data-act="more-recs" title="Show a new random set of suggestions">${ICON.shuffle}Randomize</button>`;
   });
 }
 
