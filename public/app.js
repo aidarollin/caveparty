@@ -33,8 +33,45 @@ const ICON = {
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>',
   more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
-  camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>'
+  camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>'
 };
+
+/* ---------- light and dark mode ---------- */
+// The choice is kept per device, outside the profile, so it also holds in demo mode and before joining.
+
+const THEME_KEY = 'pta-theme';
+const themeNow = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+const savedTheme = () => { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch { return null; } };
+const themeLabel = (t) => `Switch to ${t === 'light' ? 'dark' : 'light'} mode`;
+const themeButtonHTML = () => { const t = themeNow(); return `<button class="icon" data-act="theme" aria-label="${themeLabel(t)}" title="${themeLabel(t)}">${t === 'light' ? ICON.moon : ICON.sun}</button>`; };
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#F2F3EF' : '#0A0A0B');
+  document.querySelectorAll('[data-act="theme"]').forEach((b) => {
+    b.innerHTML = t === 'light' ? ICON.moon : ICON.sun;
+    b.setAttribute('aria-label', themeLabel(t));
+    b.title = themeLabel(t);
+  });
+}
+applyTheme(themeNow());
+// Follow the system setting until someone picks a side on this device.
+window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', (e) => { if (!savedTheme()) applyTheme(e.matches ? 'light' : 'dark'); });
+
+// The blurred artwork of the current song, shown behind the glass panels.
+function setArt(videoId) {
+  const el = $('#backdrop-art');
+  if (!el) return;
+  const url = videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : '';
+  if (el.dataset.url === url) return;
+  el.dataset.url = url;
+  if (!url) { el.classList.remove('on'); return; }
+  const img = new Image(); // swap only once the new picture has loaded, so the backdrop never flashes empty
+  img.onload = () => { if (el.dataset.url !== url) return; el.style.backgroundImage = `url("${url}")`; el.classList.add('on'); };
+  img.src = url;
+}
 
 /* ---------- avatars ---------- */
 
@@ -195,7 +232,7 @@ const S = {
   lastPlayerUid: undefined, lastSkipAt: 0, healAt: 0, ticker: null,
   dialog: null
 };
-const P = { api: null, yt: null, creating: false, ready: false, loadedId: null, seekN: null, holdUntil: 0, stT: null, tapT: null, reportT: null };
+const P = { api: null, yt: null, creating: false, ready: false, loadedId: null, seekN: null, holdUntil: 0, stT: null, tapT: null, tapTried: false, errAt: 0, reportT: null };
 
 const base = () => `rooms/${S.roomId}`;
 const amPlayer = () => !!S.room && S.room.player?.uid === S.uid;
@@ -253,7 +290,7 @@ function setPartyParam(code) {
 }
 
 function shell(inner) {
-  $('#app').innerHTML = `<main class="solo"><p class="brand">Pass the Aux</p>${inner}</main>`;
+  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><span class="brand-mark">${ICON.play}</span>Pass the Aux</p>${themeButtonHTML()}</header>${inner}</main>`;
 }
 
 function profileFormHTML(p, cta) {
@@ -283,7 +320,7 @@ function profileFormHTML(p, cta) {
         <input id="pf-device" name="device" type="text" maxlength="24" value="${esc(p.device || guessDevice())}">
         <p class="hint">Shown to everyone when this device plays the music.</p>
       </div>
-      <button class="btn sun wide" type="submit">${esc(cta)}</button>
+      <button class="btn primary wide" type="submit">${esc(cta)}</button>
     </form>`;
 }
 
@@ -341,7 +378,7 @@ function viewHome() {
       <span><b>${esc(S.profile.name)}</b><small>on this ${esc(S.profile.device)}</small></span>
       <span class="me-edit">Edit</span>
     </button>
-    <button class="btn sun wide" data-act="create">Start a party</button>
+    <button class="btn primary wide" data-act="create">Start a party</button>
     <form class="code-form" id="code-form" novalidate>
       <label for="code-input">Have a party code?</label>
       <div class="code-row">
@@ -365,7 +402,7 @@ function viewNotFound(code) {
   shell(`
     <h1>No party with the code ${esc(code)}</h1>
     <p class="lede">Check the link or code with whoever invited you. Codes use letters and numbers only.</p>
-    <button class="btn sun wide" data-act="home">Back to start</button>`);
+    <button class="btn primary wide" data-act="home">Back to start</button>`);
 }
 
 function viewSetup(err) {
@@ -439,6 +476,7 @@ function enterRoom(code) {
 function leaveRoom(silent) {
   if (!S.roomId) return;
   destroyPlayer();
+  setArt(null);
   clearInterval(S.ticker); clearInterval(P.reportT);
   if (S.unwatch) S.unwatch();
   if (S.stopPresence) S.stopPresence();
@@ -467,7 +505,8 @@ function mountRoom() {
         <button class="party-name" data-act="rename" id="party-name" title="Rename the party"></button>
         <div class="top-actions">
           <button class="people-chip" data-act="people" id="people-chip"></button>
-          <button class="btn sun small" data-act="invite">Invite</button>
+          <button class="btn primary small" data-act="invite">Invite</button>
+          ${themeButtonHTML()}
           <button class="me-btn" data-act="edit-profile" id="me-btn" aria-label="Edit your name and avatar"></button>
         </div>
       </header>
@@ -479,6 +518,7 @@ function mountRoom() {
             <p class="screen-msg" id="screen-msg"></p>
             <button class="tap" id="tap" data-act="tap" hidden>${ICON.play}<span>Tap to start the music on this device</span></button>
           </div>
+          <p class="tap-hint" id="tap-hint" hidden>Press play on the video above to start the music.</p>
           <div class="np" id="np"></div>
           <div class="device" id="device"></div>
         </section>
@@ -487,7 +527,7 @@ function mountRoom() {
             <label for="add-input">${hasSearch ? 'Find a song to add' : 'Add a song'}</label>
             <div class="add-row">
               <input id="add-input" type="text" autocomplete="off" enterkeyhint="${hasSearch ? 'search' : 'done'}" placeholder="${hasSearch ? 'Song title, artist or a line of lyrics' : 'Paste a YouTube link'}">
-              <button class="btn sun" type="submit" id="add-btn">${hasSearch ? 'Search' : 'Add'}</button>
+              <button class="btn primary" type="submit" id="add-btn">${hasSearch ? 'Search' : 'Add'}</button>
             </div>
           </form>
           <div id="add-out"></div>
@@ -582,6 +622,7 @@ function renderStage() {
     if (now && !mine && /^[\w-]{11}$/.test(now.videoId)) { poster.src = `https://i.ytimg.com/vi/${now.videoId}/hqdefault.jpg`; poster.hidden = false; }
     else { poster.hidden = true; poster.removeAttribute('src'); }
     msg.textContent = now ? '' : 'Nothing is playing. Add a song and it starts here.';
+    setArt(now && /^[\w-]{11}$/.test(now.videoId) ? now.videoId : null);
 
     if (!now) { $('#np').innerHTML = ''; return; }
     const paused = q.state === 'paused';
@@ -592,7 +633,7 @@ function renderStage() {
       <div class="bar" id="bar" data-act="seek" role="slider" tabindex="0" aria-label="Song position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="bar-fill"></i></div>
       <div class="times"><span id="t-cur">0:00</span><span id="t-dur"></span></div>
       <div class="ctl">
-        <button class="round sun" data-act="toggle" aria-label="${paused ? 'Play' : 'Pause'}">${paused ? ICON.play : ICON.pause}</button>
+        <button class="round primary" data-act="toggle" aria-label="${paused ? 'Play' : 'Pause'}">${paused ? ICON.play : ICON.pause}</button>
         <button class="round line" data-act="skip" aria-label="Skip to the next song">${ICON.skip}</button>
         <span class="ctl-state">${paused ? 'Paused' : playerOn ? `<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>Playing` : 'Waiting for a device'}</span>
       </div>`;
@@ -605,10 +646,10 @@ function renderDevice() {
     const el = $('#device');
     if (!pm) {
       el.innerHTML = `<div class="device-text"><p><b>No device is playing the music.</b></p><p class="sub">Pick the one connected to the speakers.</p></div>
-        <div class="device-actions"><button class="btn sun small" data-act="play-here">Play on this device</button></div>`;
+        <div class="device-actions"><button class="btn primary small" data-act="play-here">Play on this device</button></div>`;
     } else if (!pm.online) {
       el.innerHTML = `${avatarHTML(pm.avatar, 'av-m av-off')}<div class="device-text"><p><b>${esc(deviceLabel(pu))} is offline</b></p><p class="sub">The music stops until it comes back or another device takes over.</p></div>
-        <div class="device-actions"><button class="btn sun small" data-act="play-here">Play on this device</button><button class="btn line small" data-act="people">Change</button></div>`;
+        <div class="device-actions"><button class="btn primary small" data-act="play-here">Play on this device</button><button class="btn line small" data-act="people">Change</button></div>`;
     } else {
       el.innerHTML = `${avatarHTML(pm.avatar, 'av-m')}<div class="device-text"><p class="sub">Music plays on</p><p><b>${esc(deviceLabel(pu))}</b>${mine ? '<span class="pill">this device</span>' : ''}</p></div>
         <div class="device-actions"><button class="btn line small" data-act="people">Change</button></div>`;
@@ -629,8 +670,8 @@ function renderQueue() {
       const thumb = /^[\w-]{11}$/.test(i.videoId) ? `<img class="tk-thumb" src="https://i.ytimg.com/vi/${i.videoId}/mqdefault.jpg" alt="" loading="lazy">` : '';
       return `
         <li class="ticket" data-id="${esc(i.id)}">
-          <div class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(i.by)?.avatar, 'av-m')}<span class="stub-name">${esc(who)}</span></div>
-          <div class="tk-main">${thumb}<div class="tk-text"><p class="tk-title">${esc(i.title || 'YouTube video')}</p>${i.channel ? `<p class="tk-ch">${esc(i.channel)}</p>` : ''}</div></div>
+          <div class="tk-main">${thumb}<div class="tk-text"><p class="tk-title">${esc(i.title || 'YouTube video')}</p>
+            <p class="tk-meta"><span class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(i.by)?.avatar, 'av-s')}<span class="stub-name">${esc(who)}</span></span>${i.channel ? `<span class="tk-ch">${esc(i.channel)}</span>` : ''}</p></div></div>
           <div class="tk-actions">
             <button class="icon grip" aria-label="Drag to reorder">${ICON.grip}</button>
             <details class="menu">
@@ -676,7 +717,7 @@ function renderPeople(onlyIfChanged) {
     <li class="person ${m.online === true ? '' : 'is-off'}">
       ${avatarHTML(m.avatar, 'av-m')}
       <div class="person-text"><p><b>${esc(m.name)}</b>${m.uid === S.uid ? ' (you)' : ''}</p><p class="sub">${esc(m.device || 'device')}${m.online === true ? '' : ', left the party'}</p></div>
-      ${m.uid === pu ? '<span class="pill sun">Playing the music</span>' : m.online === true ? `<button class="btn line small" data-act="set-player" data-uid="${esc(m.uid)}">Play here</button>` : ''}
+      ${m.uid === pu ? '<span class="pill primary">Playing the music</span>' : m.online === true ? `<button class="btn line small" data-act="set-player" data-uid="${esc(m.uid)}">Play here</button>` : ''}
     </li>`).join('');
   openDialog('people', `
     <header class="dlg-head"><h2 id="dlg-title">${on} ${on === 1 ? 'person' : 'people'} in the party</h2><button class="icon" data-act="close" aria-label="Close">✕</button></header>
@@ -694,7 +735,7 @@ function openRename() {
         <input id="rename-input" type="text" maxlength="40" value="${esc(S.room.meta?.name || '')}" placeholder="${esc(partyName())}">
         <p class="hint">Leave it empty to name the party after whoever's device plays the music.</p>
       </div>
-      <button class="btn sun wide" type="submit">Save name</button>
+      <button class="btn primary wide" type="submit">Save name</button>
     </form>`);
   $('#rename-form', d).addEventListener('submit', (e) => {
     e.preventDefault();
@@ -717,7 +758,7 @@ function openInvite() {
     <p class="dlg-lede">Anyone with this link can join and add songs.</p>
     ${qr ? `<div class="qr" aria-label="QR code for the party link">${qr}</div>` : ''}
     <p class="code-big"><span>Party code</span><b>${esc(S.roomId)}</b></p>
-    <div class="link-row"><input id="invite-link" type="text" readonly value="${esc(link)}" aria-label="Party link"><button class="btn sun" data-act="copy-link">Copy link</button></div>
+    <div class="link-row"><input id="invite-link" type="text" readonly value="${esc(link)}" aria-label="Party link"><button class="btn primary" data-act="copy-link">Copy link</button></div>
     ${navigator.share ? '<button class="btn line wide" data-act="share-link">Share</button>' : ''}`);
 }
 
@@ -863,7 +904,7 @@ async function onAddSubmit(e) {
     out.innerHTML = `<ul class="results">${res.map((r) => `
       <li><img src="https://i.ytimg.com/vi/${esc(r.videoId)}/mqdefault.jpg" alt="" loading="lazy">
         <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${r.dur ? `<span class="dur">${fmt(r.dur)}</span>` : ''}${esc(r.channel)}</p></div>
-        <button class="btn sun small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}">Add</button></li>`).join('')}</ul>
+        <button class="btn line small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}">Add</button></li>`).join('')}</ul>
       <button class="link" data-act="clear-results">Close results</button>`;
   } catch (err) {
     out.innerHTML = `<p class="add-hint">${/quota|rateLimit/i.test(err.reason) ? 'Search has hit its daily limit.' : 'Search is not working right now.'} <a href="${esc(ytLink)}" target="_blank" rel="noopener">Find it on YouTube</a> and paste the link here instead.</p>`;
@@ -947,7 +988,7 @@ async function createPlayer() {
 function destroyPlayer() {
   clearTimeout(P.stT); clearTimeout(P.tapT);
   try { if (P.yt) P.yt.destroy(); } catch { /* already gone */ }
-  P.yt = null; P.ready = false; P.creating = false; P.loadedId = null;
+  P.yt = null; P.ready = false; P.creating = false; P.loadedId = null; P.tapTried = false;
   const host = $('#yt-host'); if (host) host.innerHTML = '';
   showTap(false);
 }
@@ -959,16 +1000,23 @@ function playerSync() {
   else if (mine && P.ready) reconcile();
 }
 
-function showTap(on) { const t = $('#tap'); if (t) t.hidden = !on; }
+// The overlay covers the video. The hint sits under it and leaves the video free to be tapped.
+function showTap(overlay, hint = false) {
+  const t = $('#tap'), h = $('#tap-hint');
+  if (t) t.hidden = !overlay;
+  if (h) h.hidden = !hint;
+}
 
 // Browsers sometimes refuse to start audio until someone taps the page. Offer a tap target when that happens.
+// On iPhone and iPad a tap on our overlay does not count as a tap on the video itself, so after one try
+// the overlay steps aside and points at the play button inside the video instead.
 function armTapCheck() {
   clearTimeout(P.tapT);
   P.tapT = setTimeout(() => {
     const q = S.room?.q || {};
     if (!amPlayer() || !P.ready || !q.now || q.state === 'paused') return showTap(false);
-    const st = playerState();
-    showTap(st !== 1 && st !== 3);
+    const st = playerState(), stuck = st !== 1 && st !== 3;
+    showTap(stuck && !P.tapTried, stuck && P.tapTried);
   }, 2800);
 }
 
@@ -990,6 +1038,7 @@ function reconcile() {
     P.seekN = q.seek.n;
     if (q.seek.id === now.id) { try { yt.seekTo(q.seek.to, true); } catch { /* ignore */ } setTimeout(() => report(), 600); }
   }
+  if (q.state === 'paused') showTap(false);
   if (Date.now() < P.holdUntil) return;
   const st = playerState();
   if (q.state === 'paused' && (st === 1 || st === 3)) yt.pauseVideo();
@@ -1011,9 +1060,14 @@ function onPlayerState(e) {
   if (st === 0) { if (P.loadedId) advance(P.loadedId); return; }
   if (st === 1) {
     showTap(false);
+    P.tapTried = false;
     const now = S.room?.q?.now;
     if (now && now.id === P.loadedId && (!now.title || now.title === 'YouTube video')) {
-      try { const d = P.yt.getVideoData(); if (d && d.title) S.store.update(`${base()}/q/now`, { title: d.title, channel: d.author || '' }).catch(() => {}); } catch { /* no data yet */ }
+      // A transaction, so a title that arrives just after a skip cannot bring the old song back as a half-empty entry.
+      try {
+        const d = P.yt.getVideoData(), id = now.id;
+        if (d && d.title) S.store.tx(`${base()}/q/now`, (n) => { if (n && n.id === id) { n.title = d.title; n.channel = d.author || ''; } return n; }).catch(() => {});
+      } catch { /* no data yet */ }
     }
   }
   if (st === 1 || st === 2) {
@@ -1041,7 +1095,17 @@ function onPlayerState(e) {
 function onPlayerError(e) {
   const now = S.room?.q?.now;
   if (!now || now.id !== P.loadedId) return;
-  advance(now.id, { title: String(now.title || 'a song').slice(0, 80), at: S.store.now(), why: e.data === 101 || e.data === 150 ? 'embed' : 'gone' });
+  const code = Number(e.data);
+  // 2: bad video id. 100: removed or private. 101 and 150: the owner does not allow playing it outside YouTube.
+  // These are about the song, so skip it and tell everyone why.
+  if ([2, 100, 101, 150].includes(code)) {
+    advance(now.id, { title: String(now.title || 'a song').slice(0, 80), at: S.store.now(), why: code === 101 || code === 150 ? 'embed' : 'gone' });
+    return;
+  }
+  // Anything else is trouble on this device (connection, browser, player), not with the song.
+  // Skipping would run through the whole queue in seconds, so stay on the song and say what to do.
+  if (Date.now() - P.errAt > 15000) toast('YouTube could not play this song on this device. Skip it, or move the music to another device.', 8000);
+  P.errAt = Date.now();
 }
 
 /* ---------- clicks ---------- */
@@ -1058,7 +1122,8 @@ const ACTIONS = {
   leave: () => { leaveRoom(false); setPartyParam(''); route(); },
   'play-here': () => setPlayer(S.uid),
   'set-player': (el) => { setPlayer(el.dataset.uid); closeDialog(); },
-  tap: () => { showTap(false); try { P.yt.playVideo(); } catch { /* player gone */ } armTapCheck(); },
+  tap: () => { showTap(false); P.tapTried = true; try { P.yt.playVideo(); } catch { /* player gone */ } armTapCheck(); },
+  theme: () => { const t = themeNow() === 'light' ? 'dark' : 'light'; try { localStorage.setItem(THEME_KEY, t); } catch { /* storage unavailable */ } applyTheme(t); },
   toggle: () => {
     const q = S.room?.q || {};
     if (!q.now) return;

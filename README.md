@@ -10,12 +10,14 @@ see who queued what.
   device remembers them next time, and they can change both from the avatar button.
 - One device plays the songs. Everyone sees whose device it is and can move the music to
   any other device in the party.
-- Everyone can search for a song by title, artist or lyrics and add it, drag to reorder, play a song next, or remove it. Each song in
-  the queue is a ticket whose stub shows who queued it.
+- Everyone can search for a song by title, artist or lyrics and add it, drag to reorder,
+  play a song next, or remove it. Each song in the queue shows who queued it.
 - Everyone sees how many people are in the party and who they are.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
 - Invite people with a link, a QR code, or a five-letter party code.
+- Light and dark mode. The app follows the device setting until someone uses the sun or
+  moon button, and then remembers that choice on that device.
 
 ## Try it on your computer first (no setup)
 
@@ -86,9 +88,14 @@ Until a key is added, people can still add songs by pasting a YouTube link.
 - Use a laptop, tablet, or TV browser as the playing device. Phones stop YouTube playback
   when the screen locks or the browser goes to the background.
 - Browsers sometimes block sound until someone taps the page. When that happens the
-  playing device shows a "Tap to start the music" button.
+  playing device shows a "Tap to start the music" button. On iPhone and iPad a tap on that
+  button may not be enough. The button then steps aside and a line under the video asks
+  for a press on the play button inside the video.
 - Some videos cannot be played outside youtube.com. The app refuses most of them when
   they are added and skips the rest with a notice to everyone.
+- If YouTube fails on the playing device for a reason that is not about the song (a lost
+  connection, for example), the app stays on the song and says so on that device instead
+  of skipping through the queue.
 - Anyone with the party link can add, reorder, remove, pause, skip, rename, and move the
   music. That is the point of the app, so share the link only with your guests.
 - Parties stay in the database until you delete them. To clean up, remove old entries
@@ -97,14 +104,22 @@ Until a key is added, people can still add songs by pasting a YouTube link.
 ## Files
 
 ```
-public/index.html        page shell
-public/styles.css        design tokens and all styling
+public/index.html        page shell, picks light or dark before the first paint
+public/styles.css        design tokens (dark and light) and all styling
 public/app.js            the whole app (profile, party, queue, player)
 public/config.js         your Firebase config and optional YouTube key
 public/vendor/           SortableJS (drag to reorder) and qrcode-generator (invite QR)
 database.rules.json      Realtime Database security rules
 firebase.json            hosting and rules deploy config
 ```
+
+## How it looks
+
+Near-black with one green accent in dark mode, soft paper white in light mode. The artwork
+of the song that is playing glows, blurred, behind two panes of frosted glass: what is
+playing on the left, the queue on the right. Every colour is a token at the top of
+`public/styles.css`, once for dark and once for light, so a new palette is a change in
+one place.
 
 ## How the data is shaped
 
