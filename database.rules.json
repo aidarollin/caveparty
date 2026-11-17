@@ -1,0 +1,43 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "auth != null",
+        ".validate": "$room.matches(/^[A-Z0-9]{4,8}$/)",
+        "meta": {
+          ".write": "auth != null",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          }
+        },
+        "player": {
+          ".write": "auth != null"
+        },
+        "q": {
+          ".write": "auth != null"
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "device": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "avatar": {
+              ".validate": "newData.isString() && newData.val().length <= 60000"
+            }
+          }
+        }
+      }
+    },
+    "search": {
+      "$key": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['q', 'at', 'items']) && newData.child('q').isString() && newData.child('q').val().length <= 200 && newData.child('at').isNumber()"
+      }
+    }
+  }
+}

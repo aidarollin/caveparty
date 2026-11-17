@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+.firebase/
+firebase-debug.log
+*-debug.log
+# Never commit service account keys or OAuth client secrets
+*service-account*.json
+*serviceAccount*.json
+client_secret*.json
+.env
+.env.*
