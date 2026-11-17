@@ -35,7 +35,9 @@ const ICON = {
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>'
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>'
 };
 
 /* ---------- light and dark mode ---------- */
@@ -465,6 +467,8 @@ function enterRoom(code) {
   S.room = null;
   S.sig = {};
   S.lastPlayerUid = undefined;
+  REC.forId = null; REC.list = []; REC.n++;
+  R.items = []; R.next = null;
   ls.set('lastRoom', code);
   mountRoom();
   S.stopPresence = S.store.presence(`${base()}/members/${S.uid}`, memberRecord, { online: false });
@@ -523,25 +527,39 @@ function mountRoom() {
           <div class="device" id="device"></div>
         </section>
         <section class="side" aria-label="Queue">
+          <div class="q-head">
+            <h2 class="q-title" id="q-title">Up next</h2>
+            <button class="btn line small" data-act="shuffle" id="shuffle-btn" hidden>${ICON.shuffle}Shuffle</button>
+          </div>
+          <ol class="queue" id="queue"></ol>
+          <p class="q-empty" id="q-empty" hidden></p>
           <form class="add" id="add" novalidate>
             <label for="add-input">${hasSearch ? 'Find a song to add' : 'Add a song'}</label>
             <div class="add-row">
-              <input id="add-input" type="text" autocomplete="off" enterkeyhint="${hasSearch ? 'search' : 'done'}" placeholder="${hasSearch ? 'Song title, artist or a line of lyrics' : 'Paste a YouTube link'}">
+              <div class="add-field">
+                <input id="add-input" type="text" autocomplete="off" enterkeyhint="${hasSearch ? 'search' : 'done'}" placeholder="${hasSearch ? 'Song title, artist or a line of lyrics' : 'Paste a YouTube link'}"${hasSearch ? ' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="add-suggest"' : ''}>
+                <ul class="suggest" id="add-suggest" role="listbox" aria-label="Search predictions" hidden></ul>
+              </div>
               <button class="btn primary" type="submit" id="add-btn">${hasSearch ? 'Search' : 'Add'}</button>
             </div>
           </form>
           <div id="add-out"></div>
-          <h2 class="q-title" id="q-title">Up next</h2>
-          <ol class="queue" id="queue"></ol>
-          <p class="q-empty" id="q-empty" hidden></p>
+          <div class="recs" id="recs" hidden></div>
         </section>
       </div>
     </div>`;
 
   $('#add').addEventListener('submit', onAddSubmit);
   $('#add-input').addEventListener('input', () => {
-    if (hasSearch) $('#add-btn').textContent = parseVideoId($('#add-input').value) ? 'Add' : 'Search';
+    if (!hasSearch) return;
+    $('#add-btn').textContent = parseVideoId($('#add-input').value) ? 'Add' : 'Search';
+    onSuggestInput();
   });
+  if (hasSearch) {
+    $('#add-input').addEventListener('keydown', onSuggestKey);
+    $('#add-input').addEventListener('blur', () => closeSuggest());
+    $('#add-suggest').addEventListener('mousedown', (e) => e.preventDefault()); // keep the typing focus while picking a prediction
+  }
 
   if (window.Sortable) {
     S.sortable = new window.Sortable($('#queue'), {
@@ -588,6 +606,7 @@ function onRoom() {
   renderDevice();
   renderQueue();
   if (S.dialog === 'people') renderPeople(true);
+  loadRecs();
   playerSync();
   tick();
 }
@@ -663,6 +682,7 @@ function renderQueue() {
   const sig = JSON.stringify([!!S.room.q?.now, items.map((i) => [i.id, i.title, i.channel, i.by, member(i.by)?.name, member(i.by)?.avatar])]);
   once('queue', sig, () => {
     $('#q-title').textContent = items.length ? `Up next (${items.length})` : 'Up next';
+    $('#shuffle-btn').hidden = items.length < 2;
     $('#q-empty').hidden = items.length > 0;
     $('#q-empty').textContent = S.room.q?.now ? 'Nothing queued after this song. Add the next one.' : 'The queue is empty. Add the first song to get the party going.';
     $('#queue').innerHTML = items.map((i, idx) => {
@@ -825,10 +845,13 @@ const isoSeconds = (iso) => {
   return m ? (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0) : 0;
 };
 
-async function ytSearch(text) {
-  const params = { part: 'snippet', type: 'video', videoEmbeddable: 'true', maxResults: '10', q: text };
-  let j = await ytApi('search', { ...params, videoCategoryId: '10' }); // music first
-  if (!(j.items || []).length) j = await ytApi('search', params);      // then anything
+// One call returns up to 50 videos, the most YouTube gives at once, and costs the same as a small one.
+// "next" is the ticket for the following 50, used by "Show more results". Only videos that can be
+// played outside YouTube are asked for, because the others would be skipped by the player anyway.
+async function ytSearch(text, pageToken) {
+  const params = { part: 'snippet', type: 'video', videoEmbeddable: 'true', maxResults: '50', q: text };
+  if (pageToken) params.pageToken = pageToken;
+  const j = await ytApi('search', params);
   const items = (j.items || []).filter((i) => i.id?.videoId).map((i) => ({
     videoId: i.id.videoId, title: decodeEntities(i.snippet?.title), channel: decodeEntities(i.snippet?.channelTitle), dur: 0
   }));
@@ -839,7 +862,7 @@ async function ytSearch(text) {
       items.forEach((i) => { i.dur = len[i.videoId] || 0; });
     } catch { /* lengths are a nice extra */ }
   }
-  return items;
+  return { items, next: j.nextPageToken || null };
 }
 
 const normQuery = (t) => String(t).toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -853,14 +876,151 @@ function hashKey(str) {
 
 const SEARCH_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 async function searchSongs(text) {
-  const q = normQuery(text), path = `search/${hashKey(q)}`;
+  const q = normQuery(text), path = `search/${hashKey('v2 ' + q)}`; // v2: entries hold up to 50 results and the ticket for more
   try {
     const hit = await S.store.get(path);
-    if (hit && hit.q === q && hit.items && S.store.now() - hit.at < SEARCH_CACHE_MS) return Object.values(hit.items);
+    if (hit && hit.q === q && hit.items && S.store.now() - hit.at < SEARCH_CACHE_MS) return { items: Object.values(hit.items), next: hit.next || null };
   } catch { /* no cache, search directly */ }
-  const items = await ytSearch(text);
-  if (items.length) S.store.set(path, { q, at: S.store.now(), items }).catch(() => {});
-  return items;
+  const res = await ytSearch(text);
+  if (res.items.length) S.store.set(path, { q, at: S.store.now(), items: res.items, next: res.next }).catch(() => {});
+  return res;
+}
+
+/* ---------- search predictions ---------- */
+// Predictions come from Google's public suggestion feed for YouTube. It is free and separate from the
+// YouTube Data API, so typing never spends the daily search allowance. A real search still runs only
+// when someone presses Search or picks a prediction. The feed has no CORS headers, so it loads as a script.
+
+function jsonp(url, ms = 4500) {
+  return new Promise((res, rej) => {
+    const name = '__pta' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    const finish = (fn, v) => { clearTimeout(t); s.remove(); window[name] = () => { delete window[name]; }; fn(v); }; // a late answer lands on a no-op
+    const t = setTimeout(() => finish(rej, new Error('timeout')), ms);
+    window[name] = (data) => finish(res, data);
+    s.onerror = () => finish(rej, new Error('failed'));
+    s.src = `${url}${url.includes('?') ? '&' : '?'}callback=${name}`;
+    document.head.appendChild(s);
+  });
+}
+
+const SG = { n: 0, t: null, items: [], active: -1 };
+
+function renderSuggest() {
+  const box = $('#add-suggest'), input = $('#add-input');
+  if (!box || !input) return;
+  const open = SG.items.length > 0;
+  box.hidden = !open;
+  input.setAttribute('aria-expanded', String(open));
+  if (SG.active >= 0 && open) input.setAttribute('aria-activedescendant', 'sg-' + SG.active); else input.removeAttribute('aria-activedescendant');
+  box.innerHTML = SG.items.map((text, i) => `<li role="option" id="sg-${i}" data-act="suggest" data-i="${i}" aria-selected="${i === SG.active}">${ICON.search}<span>${esc(text)}</span></li>`).join('');
+}
+
+function closeSuggest() {
+  clearTimeout(SG.t);
+  SG.n++; // drops any answer that is still on its way
+  SG.items = []; SG.active = -1;
+  renderSuggest();
+}
+
+function onSuggestInput() {
+  clearTimeout(SG.t);
+  const text = $('#add-input').value.trim();
+  if (text.length < 2 || parseVideoId(text)) return closeSuggest();
+  SG.t = setTimeout(async () => {
+    const n = ++SG.n;
+    try {
+      const j = await jsonp(`https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(text)}`);
+      if (n !== SG.n || $('#add-input')?.value.trim() !== text) return; // the person kept typing
+      SG.items = (j?.[1] || []).map((x) => String(Array.isArray(x) ? x[0] : x)).filter(Boolean).slice(0, 7);
+      SG.active = -1;
+      renderSuggest();
+    } catch { /* predictions are a nice extra */ }
+  }, 180);
+}
+
+function onSuggestKey(e) {
+  if (!SG.items.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const n = SG.items.length, step = e.key === 'ArrowDown' ? 1 : -1;
+    SG.active = SG.active < 0 ? (step > 0 ? 0 : n - 1) : (SG.active + step + n) % n;
+    $('#add-input').value = SG.items[SG.active];
+    renderSuggest();
+  } else if (e.key === 'Escape') { e.preventDefault(); closeSuggest(); }
+}
+
+/* ---------- next song suggestions ---------- */
+// Songs that go with what is playing, from Deezer's public catalogue (free, no key): find the artist of the
+// current song, then ask for that artist's radio. The picks carry no YouTube link, so Add looks the song up
+// with one normal search (cached like any other) and queues the best match.
+
+const REC = { forId: null, list: [], n: 0 };
+const DEEZER = 'https://api.deezer.com';
+
+// "Queen – Bohemian Rhapsody (Official Video Remastered)" -> "Queen Bohemian Rhapsody"
+const cleanSongTitle = (t) => String(t || '')
+  .replace(/\([^)]*\)|\[[^\]]*\]|【[^】]*】/g, ' ')
+  .replace(/\bofficial\s+(music\s+|lyric\s+|hd\s+)?(video|audio)\b|\blyrics?\s*(video)?\s*$|\bm\/v\b|\b(hd|4k)\b/gi, ' ')
+  .replace(/\b(ft|feat|featuring)\b\.?\s.*$/i, ' ')
+  .replace(/[-–—|:"]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+async function loadRecs() {
+  const now = S.room?.q?.now;
+  if (!CFG.youtubeApiKey || !now) { REC.forId = null; REC.list = []; REC.n++; return renderRecs(); }
+  if (REC.forId === now.id) return renderRecs();
+  REC.forId = now.id;
+  const n = ++REC.n;
+  try {
+    const find = async (text) => (text ? (await jsonp(`${DEEZER}/search?limit=1&output=jsonp&q=${encodeURIComponent(text)}`))?.data?.[0] : null);
+    const hit = (await find(cleanSongTitle(now.title))) || (await find(String(now.channel || '').replace(/vevo$|official|- topic/gi, ' ').trim()));
+    if (n !== REC.n) return;
+    const radio = hit?.artist?.id ? await jsonp(`${DEEZER}/artist/${hit.artist.id}/radio?limit=40&output=jsonp`) : null;
+    if (n !== REC.n) return;
+    REC.list = (radio?.data || []).filter((t) => t && t.title && t.artist?.name).map((t) => ({
+      key: String(t.id), title: t.title_short || t.title, artist: t.artist.name, cover: t.album?.cover_medium || t.album?.cover_small || ''
+    }));
+  } catch { if (n === REC.n) REC.list = []; }
+  if (n === REC.n) renderRecs();
+}
+
+function renderRecs() {
+  const box = $('#recs');
+  if (!box) return;
+  const q = S.room?.q || {};
+  const have = [q.now, ...Object.values(q.items || {})].filter(Boolean).map((i) => normQuery(i.title));
+  const fresh = REC.list.filter((r) => { const t = normQuery(r.title), a = normQuery(r.artist).split(' ')[0]; return !have.some((h) => h.includes(t) && h.includes(a)); }).slice(0, 5);
+  once('recs', JSON.stringify(fresh.map((r) => r.key)), () => {
+    box.hidden = !fresh.length;
+    box.innerHTML = !fresh.length ? '' : `
+      <h2 class="q-title">Suggested next</h2>
+      <p class="sub">Picked to go with what is playing.</p>
+      <ul class="results">${fresh.map((r) => `
+        <li>${/^https:\/\//.test(r.cover) ? `<img src="${esc(r.cover)}" alt="" loading="lazy">` : ''}
+          <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${esc(r.artist)}</p></div>
+          <button class="btn line small" data-act="add-rec" data-key="${esc(r.key)}" data-q="${esc(r.artist + ' ' + r.title)}">Add</button></li>`).join('')}</ul>`;
+  });
+}
+
+/* ---------- search results ---------- */
+
+const R = { text: '', items: [], next: null };
+const searchFailText = (err) => (/quota|rateLimit/i.test(err?.reason || '') ? 'Search has hit its daily limit.' : 'Search is not working right now.');
+
+function renderResults() {
+  const out = $('#add-out');
+  if (!out) return;
+  const q = S.room?.q || {};
+  const inQueue = new Set([q.now, ...Object.values(q.items || {})].filter(Boolean).map((i) => i.videoId));
+  const keep = $('#results')?.scrollTop || 0;
+  out.innerHTML = `
+    <div class="results-head"><p class="sub">${R.items.length} ${R.items.length === 1 ? 'result' : 'results'}</p><button class="link" data-act="clear-results">Close results</button></div>
+    <ul class="results scroll" id="results">${R.items.map((r) => `
+      <li><img src="https://i.ytimg.com/vi/${esc(r.videoId)}/mqdefault.jpg" alt="" loading="lazy">
+        <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${r.dur ? `<span class="dur">${fmt(r.dur)}</span>` : ''}${esc(r.channel)}</p></div>
+        <button class="btn line small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}"${inQueue.has(r.videoId) ? ' disabled>Added' : '>Add'}</button></li>`).join('')}</ul>
+    ${R.next ? '<button class="btn line small wide" data-act="more-results">Show more results</button>' : ''}`;
+  $('#results').scrollTop = keep;
 }
 
 async function addSong(videoId, meta) {
@@ -882,6 +1042,7 @@ async function addSong(videoId, meta) {
 async function onAddSubmit(e) {
   e.preventDefault();
   const input = $('#add-input'), out = $('#add-out'), text = input.value.trim();
+  closeSuggest();
   if (!text) return input.focus();
   const vid = parseVideoId(text);
   if (vid) {
@@ -900,15 +1061,45 @@ async function onAddSubmit(e) {
   $('#add-btn').disabled = true;
   try {
     const res = await searchSongs(text).finally(() => { $('#add-btn').disabled = false; });
-    if (!res.length) { out.innerHTML = '<p class="add-hint">Nothing found. Try the title with the artist, or a different line from the lyrics.</p>'; return; }
-    out.innerHTML = `<ul class="results">${res.map((r) => `
-      <li><img src="https://i.ytimg.com/vi/${esc(r.videoId)}/mqdefault.jpg" alt="" loading="lazy">
-        <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${r.dur ? `<span class="dur">${fmt(r.dur)}</span>` : ''}${esc(r.channel)}</p></div>
-        <button class="btn line small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}">Add</button></li>`).join('')}</ul>
-      <button class="link" data-act="clear-results">Close results</button>`;
+    if (!res.items.length) { out.innerHTML = '<p class="add-hint">Nothing found. Try the title with the artist, or a different line from the lyrics.</p>'; return; }
+    R.text = text; R.items = res.items; R.next = res.next;
+    out.innerHTML = '';
+    renderResults();
   } catch (err) {
-    out.innerHTML = `<p class="add-hint">${/quota|rateLimit/i.test(err.reason) ? 'Search has hit its daily limit.' : 'Search is not working right now.'} <a href="${esc(ytLink)}" target="_blank" rel="noopener">Find it on YouTube</a> and paste the link here instead.</p>`;
+    out.innerHTML = `<p class="add-hint">${searchFailText(err)} <a href="${esc(ytLink)}" target="_blank" rel="noopener">Find it on YouTube</a> and paste the link here instead.</p>`;
   }
+}
+
+// The next 50 results for the same search. This is one more search call, so it only runs when asked for.
+async function moreResults(btn) {
+  if (!R.next) return;
+  btn.disabled = true; btn.textContent = 'Loading';
+  try {
+    const res = await ytSearch(R.text, R.next);
+    const seen = new Set(R.items.map((i) => i.videoId));
+    R.items = R.items.concat(res.items.filter((i) => !seen.has(i.videoId)));
+    R.next = res.next;
+    renderResults();
+  } catch (err) {
+    toast(`${searchFailText(err)} The results so far stay on screen.`, 5000);
+    btn.disabled = false; btn.textContent = 'Show more results';
+  }
+}
+
+// Mix the queue. One transaction on the whole list, so a song removed at the same moment cannot come back half-made.
+function shuffleQueue() {
+  return S.store.tx(`${base()}/q/items`, (items) => {
+    if (!items) return items;
+    const ids = Object.keys(items).sort((a, b) => items[a].order - items[b].order);
+    if (ids.length < 2) return items;
+    const mixed = ids.slice();
+    for (let tries = 0; tries < 8 && (tries === 0 || mixed.join() === ids.join()); tries++) {
+      for (let i = mixed.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [mixed[i], mixed[j]] = [mixed[j], mixed[i]]; }
+    }
+    const t = S.store.now(); // every new place is in the past, so songs added later still land at the end
+    mixed.forEach((id, i) => { items[id].order = t - (mixed.length - i); });
+    return items;
+  }).then(() => toast('Queue shuffled')).catch(() => toast('The queue could not be shuffled. Try again.'));
 }
 
 /* ---------- queue actions ---------- */
@@ -1148,7 +1339,23 @@ const ACTIONS = {
     const ok = await addSong(el.dataset.vid, { title: el.dataset.title, channel: el.dataset.channel });
     if (ok) el.textContent = 'Added'; else el.disabled = false;
   },
-  'clear-results': () => { $('#add-out').innerHTML = ''; },
+  'clear-results': () => { $('#add-out').innerHTML = ''; R.items = []; R.next = null; },
+  'more-results': (el) => moreResults(el),
+  shuffle: () => shuffleQueue(),
+  suggest: (el) => { $('#add-input').value = SG.items[Number(el.dataset.i)] || ''; closeSuggest(); $('#add').requestSubmit(); },
+  'add-rec': async (el) => {
+    el.disabled = true; el.textContent = 'Finding';
+    try {
+      const { items } = await searchSongs(el.dataset.q);
+      const hit = items.find((i) => i.dur > 60 && i.dur < 720) || items[0]; // a song-length video first, not an hour-long mix
+      if (!hit) toast('That song could not be found on YouTube.');
+      else if (await addSong(hit.videoId, { title: hit.title, channel: hit.channel })) {
+        REC.list = REC.list.filter((r) => r.key !== el.dataset.key);
+        return renderRecs();
+      }
+    } catch (err) { toast(`${searchFailText(err)} Paste a YouTube link instead.`, 5000); }
+    el.disabled = false; el.textContent = 'Add';
+  },
   'copy-link': async (el) => {
     const input = $('#invite-link');
     try { await navigator.clipboard.writeText(input.value); el.textContent = 'Copied'; }
@@ -1166,6 +1373,24 @@ document.addEventListener('click', (e) => {
   const fn = ACTIONS[el.dataset.act];
   if (fn) fn(el, e);
 });
+
+// Song menus are placed by hand, so the scrolling queue box cannot cut them off.
+const closeMenus = () => document.querySelectorAll('details.menu[open]').forEach((d) => d.removeAttribute('open'));
+document.addEventListener('toggle', (e) => {
+  const d = e.target;
+  if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('menu')) return;
+  const pop = $('.menu-pop', d);
+  if (!d.open) { pop.classList.remove('placed'); return; }
+  const r = $('summary', d).getBoundingClientRect();
+  pop.style.left = pop.style.top = '0px';
+  const o = pop.getBoundingClientRect(); // where "0, 0" lands for this menu: the corner of its glass panel, not of the window
+  const up = window.innerHeight - r.bottom < o.height + 12 && r.top > o.height + 12;
+  pop.style.left = `${r.right - o.width - o.left}px`;
+  pop.style.top = `${(up ? r.top - o.height - 2 : r.bottom + 2) - o.top}px`;
+  pop.classList.add('placed');
+}, true);
+document.addEventListener('scroll', closeMenus, true);
+window.addEventListener('resize', closeMenus);
 
 document.addEventListener('keydown', (e) => {
   if (e.target.id !== 'bar' || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;

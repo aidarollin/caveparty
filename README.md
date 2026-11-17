@@ -11,7 +11,12 @@ see who queued what.
 - One device plays the songs. Everyone sees whose device it is and can move the music to
   any other device in the party.
 - Everyone can search for a song by title, artist or lyrics and add it, drag to reorder,
-  play a song next, or remove it. Each song in the queue shows who queued it.
+  play a song next, shuffle the queue, or remove a song. Each song in the queue shows who
+  queued it. The queue sits above the search box and scrolls inside its own frame when it
+  gets long.
+- The search box predicts what you are typing. A search shows up to 50 videos at once, and
+  "Show more results" loads the next 50.
+- Under the search box, "Suggested next" lists songs that go with what is playing.
 - Everyone sees how many people are in the party and who they are.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
@@ -82,6 +87,23 @@ paste a YouTube link instead. For bigger parties, request a higher quota from th
 YouTube API quota page in the Google Cloud console.
 
 Until a key is added, people can still add songs by pasting a YouTube link.
+
+What uses the allowance and what does not:
+
+- Pressing Search or picking a prediction: one search, unless the same search is already
+  saved.
+- "Show more results": one more search each time.
+- Adding a song from "Suggested next": one search to find it on YouTube, unless saved.
+- Typing: nothing. The predictions come from Google's public suggestion feed for YouTube,
+  which is free and separate from the YouTube Data API.
+- Showing "Suggested next": nothing. The picks come from Deezer's public catalogue, which
+  is free and needs no key.
+
+So the text people type goes to Google, and the title of the song that is playing goes to
+Deezer. If either service is down, that part of the page simply stays empty.
+
+If the key only allows your live site, search does not work when you run the site on
+`localhost`. Add `http://localhost:*/*` to the key's allowed websites if you want that.
 
 ## Good to know
 
