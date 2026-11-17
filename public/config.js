@@ -7,11 +7,11 @@
 
 window.PARTY_CONFIG = {
   firebase: {
-    apiKey: "",
-    authDomain: "",
-    databaseURL: "",
-    projectId: "",
-    appId: ""
+    apiKey: "AIzaSyAPEqJedbFA9_OwKHLxQyGs1-dZNSI8t1w",
+    authDomain: "caveparty-7e27e.firebaseapp.com",
+    databaseURL: "", // filled in once the Realtime Database exists
+    projectId: "caveparty-7e27e",
+    appId: "1:761558417222:web:5cad0d77fce9dce761af47"
   },
   youtubeApiKey: ""
 };
