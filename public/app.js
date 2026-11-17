@@ -1,4 +1,4 @@
-// Pass the Aux: a shared song queue for a party.
+// Cave Party: a shared song queue for a party. Share the aux.
 // One device plays the music (YouTube), everyone else queues and reorders songs.
 
 const CFG = window.PARTY_CONFIG || {};
@@ -55,12 +55,13 @@ const themeButtonHTML = () => { const t = themeNow(); return `<button class="ico
 
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
-  $('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#F2F3EF' : '#0A0A0B');
+  $('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#F4F6FF' : '#0D1140');
   document.querySelectorAll('[data-act="theme"]').forEach((b) => {
     b.innerHTML = t === 'light' ? ICON.moon : ICON.sun;
     b.setAttribute('aria-label', themeLabel(t));
     b.title = themeLabel(t);
   });
+  window.CaveMusicColor?.refresh(); // the colours taken from the song are different in each theme
 }
 applyTheme(themeNow());
 // Follow the system setting until someone picks a side on this device.
@@ -73,6 +74,9 @@ function setArt(videoId) {
   const url = videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : '';
   if (el.dataset.url === url) return;
   el.dataset.url = url;
+  // The room takes its colour from the song: background, glass and the two corner lights fade to colours read from
+  // the artwork. This runs on every device, not only the one playing. If the picture cannot be read, nothing changes.
+  if (url) window.CaveMusicColor?.follow(url); else window.CaveMusicColor?.clear();
   if (!url) { el.classList.remove('on'); return; }
   const img = new Image(); // swap only once the new picture has loaded, so the backdrop never flashes empty
   img.onload = () => { if (el.dataset.url !== url) return; el.style.backgroundImage = `url("${url}")`; el.classList.add('on'); };
@@ -296,7 +300,7 @@ function setPartyParam(code) {
 }
 
 function shell(inner) {
-  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><span class="brand-mark">${ICON.play}</span>Pass the Aux</p>${themeButtonHTML()}</header>${inner}</main>`;
+  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><img class="brand-mark" src="favicon.svg" alt="" width="28" height="28">Cave Party</p>${themeButtonHTML()}</header>${inner}</main>`;
 }
 
 function profileFormHTML(p, cta) {
@@ -375,7 +379,7 @@ function viewProfile(code) {
 
 function viewHome() {
   const last = cleanCode(ls.get('lastRoom'));
-  document.title = 'Pass the Aux';
+  document.title = 'Cave Party';
   shell(`
     <h1>One speaker. Everyone picks the next song.</h1>
     <p class="lede">Start a party on the device with the speakers, then share the link. Friends add and reorder songs from their own phones.</p>
@@ -645,7 +649,7 @@ function renderHeader() {
   const on = onlineMembers();
   once('name', name, () => {
     $('#party-name').innerHTML = `<span>${esc(name)}</span>${ICON.pencil}`;
-    document.title = `${name} | Pass the Aux`;
+    document.title = `${name} | Cave Party`;
   });
   once('people', JSON.stringify(on.map((m) => [m.uid, m.avatar])), () => {
     const n = on.length;

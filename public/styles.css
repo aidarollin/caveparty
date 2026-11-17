@@ -1,67 +1,92 @@
-/* Design idea: a quiet listening room. The artwork of the song that is playing glows, blurred, behind
-   two panes of frosted glass: the stage (what is playing, and on which device) on the left and the
-   queue on the right. Near-black with one green accent in dark mode, soft paper white in light mode.
-   Everything is left aligned. All colours come from the tokens below. */
+/* Cave Party. Design idea: a party in a cave. The ground is deep midnight with two soft lights in the top
+   corners, and the artwork of the song that is playing glows, blurred, behind panes of frosted glass.
+   Mint is the one glow: it marks the thing to do next and the thing that is live. Cave is the dark theme
+   and the default. Daylight is the light theme. Token names and colour values come from the brand kit
+   (brand/tokens.css). While a song plays, music-color.js fades bg, surface, surface-2, menu, glass,
+   sheet, glow-a and glow-b to colours taken from the artwork. Text and mint never change. */
 :root {
-  --font: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;   /* the name, party name, titles */
+  --font-sans: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: var(--font-sans);
 
-  /* dark mode (the default) */
-  --bg: #0A0A0B;
-  --glow-a: rgba(30, 215, 96, 0.20);      /* green light in the top left corner */
-  --glow-b: rgba(72, 112, 255, 0.14);     /* cool light in the top right corner */
+  /* Cave: the dark theme, and the default */
+  --bg: #0D1140;
+  --surface: #161B57;                     /* opaque raised surface, where frosted glass is not possible */
+  --surface-2: #1F2670;                   /* second raise: pictures while loading, default avatar ground */
+  --glow-a: rgba(116, 242, 190, 0.20);    /* mint light in the top left corner */
+  --glow-b: rgba(140, 155, 255, 0.16);    /* periwinkle light in the top right corner */
   --art-opacity: 0.42;                    /* how strongly the song artwork shows through */
   --art-dim: 0.8;
-  --text: #FFFFFF;
-  --text-2: #B3B3B3;                      /* quiet text */
-  --text-3: #8E8E8E;                      /* placeholders */
-  --accent: #1ED760;
-  --accent-hi: #3BE477;
-  --accent-text: #1ED760;                 /* the accent when it is used as text */
-  --on-accent: #000000;
-  --danger: #F3727F;
-  --glass: rgba(22, 22, 24, 0.58);        /* frosted panels */
+  --text: #F8F8FF;
+  --text-2: #B9C0F2;                      /* quiet text */
+  --text-3: #8C94D6;                      /* placeholders */
+  --accent: #74F2BE;                      /* mint */
+  --accent-hi: #9BF7D2;
+  --accent-text: #74F2BE;                 /* the accent when it is used as text, an icon or a focus ring */
+  --on-accent: #0D1140;
+  --danger: #FF8FA0;
+  --glass: rgba(22, 27, 87, 0.58);        /* frosted panels */
   --glass-edge: rgba(255, 255, 255, 0.10);
-  --sheet: rgba(30, 30, 33, 0.86);        /* dialogs */
-  --menu: #2A2A2D;                        /* the prediction list */
+  --sheet: rgba(22, 27, 87, 0.90);        /* dialogs */
+  --menu: #1F2670;                        /* the prediction list */
   --hover: rgba(255, 255, 255, 0.07);     /* rows and inner surfaces */
   --hover-2: rgba(255, 255, 255, 0.14);
   --field: rgba(255, 255, 255, 0.09);
   --line: rgba(255, 255, 255, 0.10);
   --line-strong: rgba(255, 255, 255, 0.34);
-  --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-  --toast-bg: #FFFFFF;
-  --toast-text: #121212;
+  --shadow-pop: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --shadow: var(--shadow-pop);
+  --toast-bg: #F8F8FF;
+  --toast-text: #0D1140;
+  --scrim: rgba(7, 9, 36, 0.55);          /* behind dialogs and the history drawer: midnight, not black */
+
+  /* identity colours, the same in both themes */
+  --brand-midnight: #0D1140;
+  --brand-mint: #74F2BE;
+  --brand-paper: #F8F8FF;
+  --brand-periwinkle: #8C9BFF;
+
+  /* scales from the brand kit, for new work */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 44px;
+  --radius-sm: 8px; --radius-md: 14px; --radius-lg: 22px; --radius-pill: 999px;
+
   --blur: blur(28px) saturate(160%);
+  --fast: 0.18s ease;                              /* hover, press, focus */
   --slide: 0.42s cubic-bezier(0.4, 0, 0.2, 1);   /* panels that glide in and out */
+  --ambient: 1.4s;                                 /* the room changing colour with the song */
   color-scheme: dark;
 }
 
+/* Daylight: the light theme. The app's selector is data-theme="light", which music-color.js also reads as Daylight. */
 :root[data-theme="light"] {
-  --bg: #F2F3EF;
-  --glow-a: rgba(30, 215, 96, 0.26);
-  --glow-b: rgba(96, 140, 255, 0.18);
+  --bg: #F4F6FF;
+  --surface: #FFFFFF;
+  --surface-2: #DDE2FF;
+  --glow-a: rgba(116, 242, 190, 0.34);
+  --glow-b: rgba(140, 155, 255, 0.24);
   --art-opacity: 0.42;
   --art-dim: 1.1;
-  --text: #121212;
-  --text-2: #565656;
-  --text-3: #6B6B6B;
-  --accent: #1ED760;
-  --accent-hi: #19C454;
-  --accent-text: #0C7431;
-  --on-accent: #000000;
-  --danger: #C4273A;
+  --text: #0D1140;
+  --text-2: #454B85;
+  --text-3: #585E93;
+  --accent: #74F2BE;
+  --accent-hi: #5EE6AD;
+  --accent-text: #0A6E4E;                 /* mint text fails on a light ground, so it becomes a deep green */
+  --on-accent: #0D1140;
+  --danger: #B32743;
   --glass: rgba(255, 255, 255, 0.66);
-  --glass-edge: rgba(255, 255, 255, 0.80);
-  --sheet: rgba(250, 250, 248, 0.90);
+  --glass-edge: rgba(13, 17, 64, 0.10);
+  --sheet: rgba(255, 255, 255, 0.92);
   --menu: #FFFFFF;
-  --hover: rgba(18, 18, 18, 0.05);
-  --hover-2: rgba(18, 18, 18, 0.10);
-  --field: rgba(18, 18, 18, 0.06);
-  --line: rgba(18, 18, 18, 0.10);
-  --line-strong: rgba(18, 18, 18, 0.36);
-  --shadow: 0 24px 60px rgba(40, 50, 40, 0.16);
-  --toast-bg: #121212;
-  --toast-text: #FFFFFF;
+  --hover: rgba(13, 17, 64, 0.06);
+  --hover-2: rgba(13, 17, 64, 0.12);
+  --field: rgba(13, 17, 64, 0.07);
+  --line: rgba(13, 17, 64, 0.12);
+  --line-strong: rgba(13, 17, 64, 0.38);
+  --shadow-pop: 0 24px 60px rgba(13, 17, 64, 0.18);
+  --toast-bg: #0D1140;
+  --toast-text: #F8F8FF;
+  --scrim: rgba(13, 17, 64, 0.45);
   color-scheme: light;
 }
 
@@ -85,7 +110,7 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 p { margin: 0; }
 img { max-width: 100%; }
 a { color: inherit; text-underline-offset: 3px; }
-:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
 /* ---------- the backdrop: two soft lights, plus the artwork of the current song ---------- */
 #backdrop {
@@ -125,7 +150,7 @@ a { color: inherit; text-underline-offset: 3px; }
   --sz: 40px;
   width: var(--sz); height: var(--sz); flex: none;
   border-radius: 50%; overflow: hidden;
-  background: var(--av, #D6DCEA);
+  background: var(--av, var(--surface-2));
   display: inline-grid; place-items: center;
   font-size: calc(var(--sz) * 0.56); line-height: 1;
 }
@@ -170,7 +195,10 @@ a { color: inherit; text-underline-offset: 3px; }
 label, .label { font-weight: 700; font-size: 14px; }
 input[type="text"] {
   width: 100%; min-height: 48px; padding: 10px 16px;
-  background: var(--field); color: var(--text);
+  /* The field tint sits on the solid page colour, not on the glass. The artwork behind a panel can be very
+     bright or very dark, and a see-through field let that wash out the placeholder. On a solid ground the
+     placeholder (text-3) keeps the same contrast for every song. */
+  background: linear-gradient(var(--field), var(--field)), var(--bg); color: var(--text);
   border: 1px solid transparent; border-radius: 12px;
   transition: border-color 0.12s ease, background-color 0.12s ease;
 }
@@ -184,12 +212,11 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .boot { position: relative; z-index: 1; padding: 48px 20px; color: var(--text-2); }
 .solo { max-width: 480px; margin: 24px auto 48px; padding: 22px 24px 30px; border-radius: 28px; box-shadow: var(--shadow); }
 .solo-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 36px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
-.brand-mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 9px; background: var(--accent); color: var(--on-accent); }
-.brand-mark svg { width: 16px; height: 16px; fill: currentColor; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.brand-mark { width: 28px; height: 28px; flex: none; display: block; }
 .solo h1 {
-  font-size: clamp(32px, 8.4vw, 44px); font-weight: 800; line-height: 1.04;
-  letter-spacing: -0.03em; margin: 0 0 14px; text-wrap: balance;
+  font-family: var(--font-display); font-size: clamp(32px, 8.4vw, 44px); font-weight: 800; line-height: 1.04;
+  letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;
 }
 .lede { font-size: 16px; line-height: 1.5; color: var(--text-2); max-width: 44ch; margin-bottom: 28px; }
 .steps { padding-left: 20px; margin: 0 0 16px; display: grid; gap: 10px; }
@@ -235,13 +262,16 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .party-name {
   display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%;
   background: none; border: 0; padding: 4px 0; text-align: left;
-  font-size: clamp(26px, 5.4vw, 40px); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em;
+  font-family: var(--font-display); font-size: clamp(26px, 5.4vw, 40px); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em;
 }
 .party-name span { overflow-wrap: anywhere; }
 .party-name svg { width: 18px; height: 18px; flex: none; opacity: 0; color: var(--text-2); transition: opacity 0.12s ease; }
 .party-name:hover svg, .party-name:focus-visible svg { opacity: 1; }
 @media (hover: none) { .party-name svg { opacity: 0.7; } }
 .top-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+/* These two icons sit on the bare ground in the top corners, where the lights and the artwork are strongest.
+   Quiet colour does not hold there, so they take the main text colour. */
+.top .icon { color: var(--text); }
 .people-chip {
   display: inline-flex; align-items: center; gap: 8px; min-height: 40px;
   border-radius: 999px; padding: 6px 14px 6px 8px;
@@ -297,7 +327,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
   }
   .room[data-hist="open"] .hist { transform: none; visibility: visible; transition: transform var(--slide); }
   .hist-scrim {
-    position: fixed; inset: 0; z-index: 29; background: rgba(8, 8, 10, 0.5);
+    position: fixed; inset: 0; z-index: 29; background: var(--scrim);
     -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
     opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
   }
@@ -331,7 +361,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .np { padding-top: 18px; }
 .np-by { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--accent-text); }
 .np-title {
-  font-size: clamp(22px, 4.2vw, 30px); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
+  font-family: var(--font-display); font-size: clamp(22px, 4.2vw, 30px); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
   margin: 8px 0 4px; text-wrap: balance; overflow-wrap: anywhere;
 }
 .np-ch { color: var(--text-2); }
@@ -420,7 +450,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 
 /* the queue: one row per song, with who queued it */
 .q-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin-bottom: 10px; }
-.q-title { font-size: 20px; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
+.q-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
 .btn svg { width: 16px; height: 16px; margin-right: 6px; fill: currentColor; }
 .queue { list-style: none; margin: 0 -8px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .q-empty { padding: 18px; background: var(--hover); border-radius: 14px; color: var(--text-2); }
@@ -454,12 +484,12 @@ input[type="text"]::placeholder { color: var(--text-3); }
   width: min(440px, calc(100vw - 24px)); max-height: min(88vh, 760px); overflow-x: hidden; overflow-y: auto;
   padding: 22px 22px 24px; border-radius: 24px; color: var(--text);
 }
-.dlg::backdrop { background: rgba(8, 8, 10, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dlg::backdrop { background: rgba(7, 9, 36, 0.55); /* a literal, because older browsers do not pass variables to ::backdrop */ -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 @media (max-width: 560px) {
   .dlg { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 24px 24px 0 0; border-bottom: 0; }
 }
 .dlg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.dlg-head h2 { font-size: 24px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin: 6px 0 0; }
+.dlg-head h2 { font-family: var(--font-display); font-size: 24px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin: 6px 0 0; }
 .dlg-head .icon { margin: -2px -8px 0 0; }
 .dlg-lede { color: var(--text-2); margin-bottom: 16px; }
 .dlg .pf { margin-top: 14px; }

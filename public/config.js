@@ -1,4 +1,4 @@
-// Pass the Aux settings.
+// Cave Party settings.
 // 1. Paste your Firebase web app config below (Firebase console > Project settings > Your apps).
 //    If you host on Firebase Hosting you can leave it empty: the app then reads the
 //    config that Firebase Hosting serves automatically.

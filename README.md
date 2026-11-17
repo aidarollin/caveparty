@@ -1,4 +1,6 @@
-# Pass the Aux
+# Cave Party
+
+Share the aux.
 
 A shared song queue for a party. One device plays the music from YouTube. Everyone else
 opens the same link on their own phone to add songs, reorder the queue, pause, skip, and
@@ -131,8 +133,11 @@ If the key only allows your live site, search does not work when you run the sit
 ## Files
 
 ```
-public/index.html        page shell, picks light or dark before the first paint
-public/styles.css        design tokens (dark and light) and all styling
+public/index.html        page shell, picks Cave or Daylight before the first paint
+public/styles.css        brand tokens (Cave and Daylight) and all styling
+public/music-color.js    makes the room take its colours from the song artwork
+public/favicon.*, icon-*.png, apple-touch-icon.png, site.webmanifest, cave-party-*.svg
+                         the disco ball: browser tab, home screen icons and source artwork
 public/app.js            the whole app (profile, party, queue, player)
 public/config.js         your Firebase config and optional YouTube key
 public/vendor/           SortableJS (drag to reorder) and qrcode-generator (invite QR)
@@ -142,11 +147,33 @@ firebase.json            hosting and rules deploy config
 
 ## How it looks
 
-Near-black with one green accent in dark mode, soft paper white in light mode. The artwork
-of the song that is playing glows, blurred, behind two panes of frosted glass: what is
-playing on the left, the queue on the right. Every colour is a token at the top of
-`public/styles.css`, once for dark and once for light, so a new palette is a change in
-one place.
+Cave Party is frosted glass over a lit ground. Cave is the dark theme and the default: deep
+midnight with a mint light in the top left corner and a periwinkle light in the top right.
+Daylight is the light theme. The artwork of the song that is playing glows, blurred, behind
+the panels. Mint is the one accent: it marks the next thing to do and the thing that is live.
+
+The colours, the display face (Bricolage Grotesque for the name and titles, Figtree for
+everything else) and the icons come from the Cave Party brand kit. Every colour is a token
+at the top of `public/styles.css`, once for Cave and once for Daylight, with the same names
+as the kit's `tokens.css`.
+
+### The room follows the song
+
+`public/music-color.js` (from the brand kit, unchanged) reads the artwork of the playing
+song and fades the background, the glass, the dialogs and the two corner lights to colours
+taken from it. Only the hue and strength come from the song. Lightness stays with the brand,
+and text and mint never change. It runs on every device in the party. Artwork that is nearly
+black and white keeps the brand colours, and so does the moment when nothing plays.
+
+YouTube's thumbnail host allows other sites to read its pictures, so this works in the
+browser with no proxy.
+
+Two choices keep quiet text readable for every song:
+
+- Text fields sit on the solid page colour instead of on the glass, so the placeholder has
+  the same contrast whatever artwork is behind the panel.
+- The two icons in the top corners use the main text colour, because the lights and the
+  artwork are strongest there.
 
 ## How the data is shaped
 
