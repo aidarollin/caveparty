@@ -31,6 +31,7 @@ const ICON = {
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
   skip: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14l9-7zM16 5h3v14h-3z"/></svg>',
   grip: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>',
+  remote: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h8V4zm2.5 3.5v6l5-3z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 12.1a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9zm4 2v8h2v-8zm4 0v8h2v-8z"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
@@ -492,6 +493,7 @@ function leaveRoom(silent) {
   if (S.sortable) { S.sortable.destroy(); S.sortable = null; }
   S.unwatch = S.stopPresence = null;
   S.roomId = null; S.room = null;
+  updateLock(); // no party any more: stop the silent sound and clear the lock screen
   closeDialog();
   if (!silent) ls.del('lastRoom');
 }
@@ -516,6 +518,7 @@ function mountRoom() {
         <div class="top-actions">
           <button class="people-chip" data-act="people" id="people-chip"></button>
           <button class="btn primary small" data-act="invite">Invite</button>
+          <button class="icon" data-act="lock" id="lock-btn" aria-pressed="false" hidden>${ICON.remote}</button>
           ${themeButtonHTML()}
           <button class="me-btn" data-act="edit-profile" id="me-btn" aria-label="Edit your name and avatar"></button>
         </div>
@@ -629,6 +632,8 @@ function onRoom() {
   renderQueue();
   if (S.dialog === 'people') renderPeople(true);
   renderHistory();
+  renderLock();
+  updateLock();
   loadRecs();
   playerSync();
   tick();
@@ -649,7 +654,7 @@ function renderHeader() {
   });
   once('people', JSON.stringify(on.map((m) => [m.uid, m.avatar])), () => {
     const n = on.length;
-    $('#people-chip').innerHTML = `<span class="stack">${on.slice(0, 4).map((m) => avatarHTML(m.avatar, 'av-s')).join('')}</span><span class="count">${n} ${n === 1 ? 'person' : 'people'} here</span>`;
+    $('#people-chip').innerHTML = `<span class="stack">${on.slice(0, 4).map((m) => avatarHTML(m.avatar, 'av-s')).join('')}</span><span class="count">${n} ${n === 1 ? 'person' : 'people'}<span class="here"> here</span></span>`;
     $('#people-chip').setAttribute('aria-label', `${n} ${n === 1 ? 'person' : 'people'} in the party. Show everyone.`);
   });
   once('me', S.profile.avatar, () => { $('#me-btn').innerHTML = avatarHTML(S.profile.avatar, 'av-m'); });
@@ -738,6 +743,7 @@ function tick() {
   $('#bar').dataset.dur = dur;
   $('#t-cur').textContent = fmt(cur);
   $('#t-dur').textContent = dur ? fmt(dur) : '';
+  lockPosition(cur, dur);
 }
 
 /* ---------- dialogs ---------- */
@@ -1268,6 +1274,110 @@ function setPlayer(uid) {
   return S.store.update(`${base()}/player`, { uid, at: S.store.now(), by: S.uid }).catch(() => toast('Could not switch devices. Try again.'));
 }
 
+function setPlaying(next) {
+  const q = S.room?.q || {};
+  if (!q.now || (q.state === 'paused') === (next === 'paused')) return;
+  if (amPlayer() && P.ready) { P.holdUntil = 0; try { next === 'playing' ? P.yt.playVideo() : P.yt.pauseVideo(); } catch { /* ignore */ } }
+  S.store.update(`${base()}/q`, { state: next, pos: estPos(), posAt: S.store.now(), posId: q.now.id }).catch(() => {});
+}
+function skipSong() { const now = S.room?.q?.now; if (now) advance(now.id); }
+function seekTo(sec, dur) {
+  const q = S.room?.q || {};
+  if (!q.now) return;
+  dur = dur || (q.posId === q.now.id ? q.dur || 0 : 0);
+  if (!dur) return;
+  const to = Math.max(0, Math.min(dur - 1, sec));
+  S.store.update(`${base()}/q`, { seek: { to, id: q.now.id, n: S.store.now() }, pos: to, posAt: S.store.now(), posId: q.now.id }).catch(() => {});
+}
+
+/* ---------- controls outside the browser (lock screen and notification bar) ---------- */
+// The video itself cannot play once a phone leaves the browser (YouTube blocks that), so this is not about
+// playing. It lets any device that is NOT playing the music show the song with pause, next and a seek bar on
+// its lock screen or notification bar, and press them to control the party. To keep the page running and the
+// notification alive, a silent sound loops while this is switched on. That can pause other audio on the same
+// phone, so it is opt in, and it is never used on the device that plays the music.
+
+const LOCK_KEY = 'pta-lock';
+const LK = { on: false, el: null, sig: '', handlers: false, posAt: 0, retry: false };
+const lockSupported = () => 'mediaSession' in navigator && typeof MediaMetadata !== 'undefined';
+const lockSaved = () => { try { return localStorage.getItem(LOCK_KEY) === 'on'; } catch { return false; } };
+
+// Ten seconds of silence as a WAV file, made on the spot. Browsers only show a media notification for sounds
+// that last at least five seconds.
+function silentSound() {
+  const rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const text = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  text(0, 'RIFF'); v.setUint32(4, 36 + n, true); text(8, 'WAVE'); text(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate, true);
+  v.setUint16(32, 1, true); v.setUint16(34, 8, true); text(36, 'data'); v.setUint32(40, n, true);
+  new Uint8Array(buf, 44).fill(128); // 128 is silence in 8 bit audio
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+function lockAudio(run) {
+  if (!LK.el) { LK.el = new Audio(silentSound()); LK.el.loop = true; LK.el.setAttribute('playsinline', ''); }
+  if (!run) { LK.el.pause(); return; }
+  if (!LK.el.paused) return;
+  LK.el.play().catch(() => {
+    // Browsers only start sound after a tap. Try again at the next one.
+    if (LK.retry) return;
+    LK.retry = true;
+    addEventListener('pointerdown', () => { LK.retry = false; updateLock(); }, { once: true, capture: true });
+  });
+}
+
+function updateLock() {
+  if (!lockSupported()) return;
+  const ms = navigator.mediaSession, q = S.room?.q, now = q?.now;
+  const active = LK.on && !!S.roomId && !!S.room && !amPlayer() && !!now;
+  if (!active) {
+    if (LK.el && !LK.el.paused) LK.el.pause();
+    if (LK.sig) { LK.sig = ''; ms.metadata = null; ms.playbackState = 'none'; }
+    return;
+  }
+  lockAudio(true);
+  const sig = JSON.stringify([now.id, now.title, now.channel, partyName()]);
+  if (sig !== LK.sig) {
+    LK.sig = sig;
+    const art = /^[\w-]{11}$/.test(now.videoId) ? [{ src: `https://i.ytimg.com/vi/${now.videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }] : [];
+    ms.metadata = new MediaMetadata({ title: now.title || 'YouTube video', artist: now.channel || '', album: partyName(), artwork: art });
+  }
+  ms.playbackState = q.state === 'paused' ? 'paused' : 'playing';
+  if (!LK.handlers) {
+    LK.handlers = true;
+    const on = (action, fn) => { try { ms.setActionHandler(action, fn); } catch { /* this browser does not have that button */ } };
+    on('play', () => setPlaying('playing'));
+    on('pause', () => setPlaying('paused'));
+    on('nexttrack', () => skipSong());
+    on('seekto', (d) => { if (typeof d.seekTime === 'number') seekTo(d.seekTime); });
+  }
+}
+
+// Progress bar on the lock screen, refreshed every few seconds from tick().
+function lockPosition(cur, dur) {
+  if (!LK.sig || !dur || Date.now() - LK.posAt < 3000) return;
+  LK.posAt = Date.now();
+  try { navigator.mediaSession.setPositionState({ duration: dur, position: Math.min(Math.max(0, cur), dur), playbackRate: 1 }); } catch { /* ignore */ }
+}
+
+function renderLock() {
+  const b = $('#lock-btn');
+  if (!b) return;
+  b.hidden = !lockSupported() || amPlayer(); // not on the device that plays the music
+  b.setAttribute('aria-pressed', String(LK.on));
+  const label = LK.on ? 'Lock screen controls are on. Press to turn them off.' : 'Show pause and next on this device\'s lock screen';
+  b.setAttribute('aria-label', label); b.title = label;
+}
+
+function setLock(on) {
+  LK.on = on;
+  try { localStorage.setItem(LOCK_KEY, on ? 'on' : 'off'); } catch { /* storage unavailable */ }
+  if (on) lockAudio(true); // this runs inside the tap, so the browser allows the sound to start
+  updateLock(); renderLock();
+  toast(on ? 'Lock screen controls are on. This device may pause other audio while the party is open.' : 'Lock screen controls are off.', on ? 6000 : 3000);
+}
+LK.on = lockSaved();
+
 /* ---------- the YouTube player (only on the device that plays the music) ---------- */
 
 function loadYT() {
@@ -1450,20 +1560,14 @@ const ACTIONS = {
   'set-player': (el) => { setPlayer(el.dataset.uid); closeDialog(); },
   tap: () => { showTap(false); P.tapTried = true; try { P.yt.playVideo(); } catch { /* player gone */ } armTapCheck(); },
   theme: () => { const t = themeNow() === 'light' ? 'dark' : 'light'; try { localStorage.setItem(THEME_KEY, t); } catch { /* storage unavailable */ } applyTheme(t); },
-  toggle: () => {
-    const q = S.room?.q || {};
-    if (!q.now) return;
-    const next = q.state === 'paused' ? 'playing' : 'paused';
-    if (amPlayer() && P.ready) { P.holdUntil = 0; try { next === 'playing' ? P.yt.playVideo() : P.yt.pauseVideo(); } catch { /* ignore */ } }
-    S.store.update(`${base()}/q`, { state: next, pos: estPos(), posAt: S.store.now(), posId: q.now.id }).catch(() => {});
-  },
-  skip: () => { const now = S.room?.q?.now; if (now) advance(now.id); },
+  toggle: () => setPlaying((S.room?.q || {}).state === 'paused' ? 'playing' : 'paused'),
+  skip: () => skipSong(),
+  lock: () => setLock(!LK.on),
   seek: (el, e) => {
     const q = S.room?.q || {}, dur = Number(el.dataset.dur) || 0;
     if (!q.now || !dur) return;
     const rect = el.getBoundingClientRect();
-    const to = Math.max(0, Math.min(dur - 1, ((e.clientX - rect.left) / rect.width) * dur));
-    S.store.update(`${base()}/q`, { seek: { to, id: q.now.id, n: S.store.now() }, pos: to, posAt: S.store.now(), posId: q.now.id }).catch(() => {});
+    seekTo(((e.clientX - rect.left) / rect.width) * dur, dur);
   },
   'q-remove': (el) => S.store.remove(`${base()}/q/items/${el.dataset.id}`).then(() => toast('Removed from the queue')).catch(() => {}),
   'add-result': async (el) => {
