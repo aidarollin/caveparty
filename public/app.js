@@ -1033,7 +1033,7 @@ function onSuggestKey(e) {
 // current song, then ask for that artist's radio. The picks carry no YouTube link, so Add looks the song up
 // with one normal search (cached like any other) and queues the best match.
 
-const REC = { forId: null, list: [], n: 0 };
+const REC = { forId: null, list: [], n: 0, artistId: null, seen: new Set() };
 const DEEZER = 'https://api.deezer.com';
 
 // "Queen – Bohemian Rhapsody (Official Video Remastered)" -> "Queen Bohemian Rhapsody"
@@ -1042,6 +1042,31 @@ const cleanSongTitle = (t) => String(t || '')
   .replace(/\bofficial\s+(music\s+|lyric\s+|hd\s+)?(video|audio)\b|\blyrics?\s*(video)?\s*$|\bm\/v\b|\b(hd|4k)\b/gi, ' ')
   .replace(/\b(ft|feat|featuring)\b\.?\s.*$/i, ' ')
   .replace(/[-\u2013\u2014|:"]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Deezer's artist radio hands out a different random mix of that artist and similar ones on every call.
+async function artistRadio(artistId) {
+  const radio = await jsonp(`${DEEZER}/artist/${artistId}/radio?limit=40&output=jsonp`);
+  return (radio?.data || []).filter((t) => t && t.title && t.artist?.name).map((t) => ({
+    key: String(t.id), title: t.title_short || t.title, artist: t.artist.name, cover: t.album?.cover_medium || t.album?.cover_small || ''
+  }));
+}
+
+// "Randomize": deal a new random set. Songs already shown are set aside until the pool runs low.
+async function moreRecs(btn) {
+  btn.disabled = true;
+  const n = REC.n;
+  document.querySelectorAll('#recs [data-key]').forEach((b) => REC.seen.add(b.dataset.key));
+  let extra = [];
+  try { if (REC.artistId) extra = await artistRadio(REC.artistId); } catch { /* reuse what is already loaded */ }
+  if (n !== REC.n) return; // the song changed while waiting
+  const byKey = new Map([...REC.list, ...extra].map((r) => [r.key, r]));
+  let pool = [...byKey.values()].filter((r) => !REC.seen.has(r.key));
+  if (pool.length < 5) { REC.seen.clear(); pool = [...byKey.values()]; } // everything has had its turn: start over
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  REC.list = pool;
+  S.sig.recs = null;
+  renderRecs();
+}
 
 async function loadRecs() {
   const now = S.room?.q?.now;
@@ -1053,11 +1078,11 @@ async function loadRecs() {
     const find = async (text) => (text ? (await jsonp(`${DEEZER}/search?limit=1&output=jsonp&q=${encodeURIComponent(text)}`))?.data?.[0] : null);
     const hit = (await find(cleanSongTitle(now.title))) || (await find(String(now.channel || '').replace(/vevo$|official|- topic/gi, ' ').trim()));
     if (n !== REC.n) return;
-    const radio = hit?.artist?.id ? await jsonp(`${DEEZER}/artist/${hit.artist.id}/radio?limit=40&output=jsonp`) : null;
+    REC.artistId = hit?.artist?.id || null;
+    REC.seen = new Set();
+    const list = REC.artistId ? await artistRadio(REC.artistId) : [];
     if (n !== REC.n) return;
-    REC.list = (radio?.data || []).filter((t) => t && t.title && t.artist?.name).map((t) => ({
-      key: String(t.id), title: t.title_short || t.title, artist: t.artist.name, cover: t.album?.cover_medium || t.album?.cover_small || ''
-    }));
+    REC.list = list;
   } catch { if (n === REC.n) REC.list = []; }
   if (n === REC.n) renderRecs();
 }
@@ -1071,8 +1096,10 @@ function renderRecs() {
   once('recs', JSON.stringify(fresh.map((r) => r.key)), () => {
     box.hidden = !fresh.length;
     box.innerHTML = !fresh.length ? '' : `
-      <h2 class="q-title">Suggested next</h2>
-      <p class="sub">Picked to go with what is playing.</p>
+      <div class="q-head">
+        <div><h2 class="q-title">Suggested next</h2><p class="sub">Picked to go with what is playing.</p></div>
+        <button class="btn line small" data-act="more-recs" title="Show a new random set of suggestions">${ICON.shuffle}Randomize</button>
+      </div>
       <ul class="results">${fresh.map((r) => `
         <li>${/^https:\/\//.test(r.cover) ? `<img src="${esc(r.cover)}" alt="" loading="lazy">` : ''}
           <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${esc(r.artist)}</p></div>
@@ -1436,6 +1463,7 @@ const ACTIONS = {
   'more-results': (el) => moreResults(el),
   shuffle: () => shuffleQueue(),
   suggest: (el) => { $('#add-input').value = SG.items[Number(el.dataset.i)] || ''; closeSuggest(); $('#add').requestSubmit(); },
+  'more-recs': (el) => moreRecs(el),
   'add-rec': async (el) => {
     el.disabled = true; el.textContent = 'Finding';
     try {

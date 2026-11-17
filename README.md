@@ -17,6 +17,7 @@ see who queued what.
 - The search box predicts what you are typing. A search shows up to 50 videos at once, and
   "Show more results" loads the next 50.
 - Under the search box, "Suggested next" lists songs that go with what is playing.
+  Randomize deals a new random set.
 - A History sidebar on the left lists the last 50 songs the party played or skipped, newest
   first, and any of them can be added again. The button beside the party name hides and
   shows it. On a wide screen it is a column of its own and the app remembers whether you
