@@ -485,6 +485,7 @@ function leaveRoom(silent) {
   if (!S.roomId) return;
   destroyPlayer();
   setArt(null);
+  if (stageWatch) stageWatch.disconnect();
   clearInterval(S.ticker); clearInterval(P.reportT);
   if (S.unwatch) S.unwatch();
   if (S.stopPresence) S.stopPresence();
@@ -567,6 +568,8 @@ function mountRoom() {
   let savedHist = null;
   try { savedHist = localStorage.getItem(HIST_KEY); } catch { /* storage unavailable */ }
   applyHist(histWide() && savedHist !== 'closed');
+  if (stageWatch) { stageWatch.disconnect(); stageWatch.observe($('.stage')); }
+  syncHistHeight();
 
   $('#add').addEventListener('submit', onAddSubmit);
   $('#add-input').addEventListener('input', () => {
@@ -629,6 +632,7 @@ function onRoom() {
   loadRecs();
   playerSync();
   tick();
+  refreshFades();
 }
 
 function onlineMembers() {
@@ -797,7 +801,25 @@ window.matchMedia('(min-width: 1200px)').addEventListener?.('change', (e) => {
   let saved = null;
   try { saved = localStorage.getItem(HIST_KEY); } catch { /* storage unavailable */ }
   applyHist(e.matches && saved !== 'closed');
+  syncHistHeight();
 });
+
+// On wide screens the history card is exactly as tall as the player card beside it, and its list scrolls inside.
+function syncHistHeight() {
+  const hist = $('#hist'), stage = $('.stage');
+  if (!hist || !stage) return;
+  hist.style.height = histWide() ? `${stage.offsetHeight}px` : '';
+  refreshFades();
+}
+const stageWatch = 'ResizeObserver' in window ? new ResizeObserver(syncHistHeight) : null;
+
+// Lists that scroll inside their own frame fade at an edge only while more rows wait behind it.
+function refreshFades() {
+  document.querySelectorAll('.queue, .results.scroll').forEach((el) => {
+    el.toggleAttribute('data-more-up', el.scrollTop > 2);
+    el.toggleAttribute('data-more-down', el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  });
+}
 
 function renderHistory() {
   const box = $('#hist-list');
@@ -1125,6 +1147,7 @@ function renderResults() {
         <button class="btn line small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}"${inQueue.has(r.videoId) ? ' disabled>Added' : '>Add'}</button></li>`).join('')}</ul>
     ${R.next ? '<button class="btn line small wide" data-act="more-results">Show more results</button>' : ''}`;
   $('#results').scrollTop = keep;
+  refreshFades();
 }
 
 async function addSong(videoId, meta) {
@@ -1509,8 +1532,8 @@ document.addEventListener('toggle', (e) => {
   pop.style.top = `${(up ? r.top - o.height - 2 : r.bottom + 2) - o.top}px`;
   pop.classList.add('placed');
 }, true);
-document.addEventListener('scroll', closeMenus, true);
-window.addEventListener('resize', closeMenus);
+document.addEventListener('scroll', (e) => { closeMenus(); if (e.target instanceof Element && e.target.matches('.queue, .results.scroll')) refreshFades(); }, true);
+window.addEventListener('resize', () => { closeMenus(); refreshFades(); });
 // Escape tucks the history away when it is covering the page.
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && histOpen && !histWide() && !$('#dlg').open) toggleHist(false); });
 

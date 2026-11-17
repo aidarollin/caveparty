@@ -65,6 +65,10 @@
   color-scheme: light;
 }
 
+/* Registered as lengths so the fade at the edge of a scrolling list can ease in and out. */
+@property --fade-up { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade-down { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
 html { background: var(--bg); }
@@ -267,7 +271,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .hist { display: flex; flex-direction: column; min-width: 0; padding: 16px; border-radius: 22px; box-shadow: var(--shadow); }
 .hist .results.scroll { flex: 1; min-height: 0; max-height: none; margin: 0 -8px; align-content: start; }
 .hist .results li { gap: 10px; padding: 8px 4px 8px 8px; }
-.hist .results img { width: 44px; height: 44px; }
+.hist .results > li > img { width: 44px; height: 44px; }
 .hist .tk-title { font-size: 14px; }
 .hist .icon:disabled { color: var(--accent-text); cursor: default; background: none; }
 /* Wide screens: a column of its own at the left edge. The column is always there and its width glides
@@ -279,7 +283,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
   .cols { grid-template-columns: 0px minmax(0, 1.1fr) minmax(0, 1fr); margin-left: -24px; transition: grid-template-columns var(--slide), margin-left var(--slide); }
   .room[data-hist="open"] .cols { grid-template-columns: 280px minmax(0, 1.1fr) minmax(0, 1fr); margin-left: 0; }
   .hist {
-    position: sticky; top: 16px; width: 280px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+    position: sticky; top: 16px; width: 280px; /* its height follows the player card, set by the app */
     padding: 22px 16px 16px; border-radius: 26px;
     opacity: 0; transform: translateX(-28px); visibility: hidden; pointer-events: none;
     transition: opacity 0.24s ease, transform var(--slide), visibility 0s linear 0.42s;
@@ -390,7 +394,18 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .results-head + .results { margin-top: 0; }
 .results + .btn { margin-top: 12px; }
 /* long lists scroll inside their own box, so the rest of the panel stays in reach */
-.queue, .results.scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--hover-2) transparent; }
+.queue, .results.scroll {
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--hover-2) transparent;
+  /* Rows fade out at an edge that has more behind it, instead of being cut off in a hard line.
+     The app sets data-more-up and data-more-down as the list scrolls. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-up), #000 calc(100% - var(--fade-down)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-up), #000 calc(100% - var(--fade-down)), transparent 100%);
+  transition: --fade-up 0.18s ease, --fade-down 0.18s ease;
+}
+.queue[data-more-up], .results.scroll[data-more-up] { --fade-up: 36px; }
+.queue[data-more-down], .results.scroll[data-more-down] { --fade-down: 36px; }
+/* An open song menu hangs outside the list, and a mask would hide it. */
+.queue:has(details[open]) { -webkit-mask-image: none; mask-image: none; }
 .queue { max-height: min(46vh, 420px); }
 .results.scroll { max-height: min(56vh, 520px); }
 .recs { margin-top: 28px; }
@@ -399,7 +414,8 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .recs .q-title { margin: 0 0 2px; }
 .results li { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; transition: background-color 0.12s ease; }
 .results li:hover { background: var(--hover); }
-.results img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex: none; background: var(--hover-2); }
+/* Only the song picture at the start of a row. The small avatar inside the row keeps its own round shape. */
+.results > li > img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex: none; background: var(--hover-2); }
 .results .tk-text { flex: 1; }
 .dur { margin-right: 8px; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
 
@@ -485,7 +501,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 
 @media (prefers-reduced-motion: reduce) {
   .eq i, .toast { animation: none; }
-  .btn, .round, .me-btn, #backdrop-art, .hist, .hist-scrim, .room, .cols, .room[data-hist="open"] .hist { transition: none; }
+  .btn, .round, .me-btn, #backdrop-art, .hist, .hist-scrim, .room, .cols, .room[data-hist="open"] .hist, .queue, .results.scroll { transition: none; }
   .btn:hover, .round:hover, .me-btn:hover { transform: none; }
 }
 
