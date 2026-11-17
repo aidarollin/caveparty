@@ -1138,15 +1138,15 @@ function renderResults() {
   if (!out) return;
   const q = S.room?.q || {};
   const inQueue = new Set([q.now, ...Object.values(q.items || {})].filter(Boolean).map((i) => i.videoId));
-  const keep = $('#results')?.scrollTop || 0;
+  const keepPage = window.scrollY; // the list is long and the page scrolls, so "Show more" must not move the view
   out.innerHTML = `
     <div class="results-head"><p class="sub">${R.items.length} ${R.items.length === 1 ? 'result' : 'results'}</p><button class="link" data-act="clear-results">Close results</button></div>
-    <ul class="results scroll" id="results">${R.items.map((r) => `
+    <ul class="results" id="results">${R.items.map((r) => `
       <li><img src="https://i.ytimg.com/vi/${esc(r.videoId)}/mqdefault.jpg" alt="" loading="lazy">
         <div class="tk-text"><p class="tk-title">${esc(r.title)}</p><p class="tk-ch">${r.dur ? `<span class="dur">${fmt(r.dur)}</span>` : ''}${esc(r.channel)}</p></div>
         <button class="btn line small" data-act="add-result" data-vid="${esc(r.videoId)}" data-title="${esc(r.title)}" data-channel="${esc(r.channel)}"${inQueue.has(r.videoId) ? ' disabled>Added' : '>Add'}</button></li>`).join('')}</ul>
     ${R.next ? '<button class="btn line small wide" data-act="more-results">Show more results</button>' : ''}`;
-  $('#results').scrollTop = keep;
+  if (window.scrollY !== keepPage) window.scrollTo(0, keepPage);
   refreshFades();
 }
 
