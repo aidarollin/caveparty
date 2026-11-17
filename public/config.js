@@ -13,5 +13,5 @@ window.PARTY_CONFIG = {
     projectId: "caveparty-7e27e",
     appId: "1:761558417222:web:5cad0d77fce9dce761af47"
   },
-  youtubeApiKey: ""
+  youtubeApiKey: "AIzaSyB4HX7jx4JZEsXEBYlMejU6vLJkrlrwrGU"
 };
