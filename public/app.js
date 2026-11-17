@@ -37,6 +37,9 @@ const ICON = {
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.6 8l-1.4-1.4z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>',
   history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>',
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>'
 };
@@ -505,8 +508,9 @@ function route() {
 function mountRoom() {
   const hasSearch = !!CFG.youtubeApiKey;
   $('#app').innerHTML = `
-    <div class="room">
+    <div class="room" id="room" data-hist="closed">
       <header class="top">
+        <button class="icon hist-toggle" data-act="history" aria-controls="hist" aria-expanded="false" aria-label="Show history" title="Show history">${ICON.history}</button>
         <button class="party-name" data-act="rename" id="party-name" title="Rename the party"></button>
         <div class="top-actions">
           <button class="people-chip" data-act="people" id="people-chip"></button>
@@ -516,6 +520,14 @@ function mountRoom() {
         </div>
       </header>
       <div class="cols">
+        <aside class="hist" id="hist" aria-label="Songs this party has played" inert>
+          <div class="q-head">
+            <h2 class="q-title">History</h2>
+            <button class="icon" data-act="history" aria-label="Hide history" title="Hide history">${ICON.back}</button>
+          </div>
+          <ul class="results scroll" id="hist-list" hidden></ul>
+          <p class="q-empty" id="hist-empty">Nothing yet. Songs show up here once they have played or been skipped.</p>
+        </aside>
         <section class="stage" aria-label="Now playing">
           <div class="screen" id="screen">
             <div id="yt-host"></div>
@@ -526,7 +538,6 @@ function mountRoom() {
           <p class="tap-hint" id="tap-hint" hidden>Press play on the video above to start the music.</p>
           <div class="np" id="np"></div>
           <div class="device" id="device"></div>
-          <div class="stage-foot"><button class="btn line small" data-act="history" title="Songs this party has played">${ICON.history}History</button></div>
         </section>
         <section class="side" aria-label="Queue">
           <div class="q-head">
@@ -549,7 +560,13 @@ function mountRoom() {
           <div class="recs" id="recs" hidden></div>
         </section>
       </div>
+      <div class="hist-scrim" data-act="history"></div>
     </div>`;
+
+  // The sidebar starts open on a wide screen unless it was hidden there before, and tucked away on a narrow one.
+  let savedHist = null;
+  try { savedHist = localStorage.getItem(HIST_KEY); } catch { /* storage unavailable */ }
+  applyHist(histWide() && savedHist !== 'closed');
 
   $('#add').addEventListener('submit', onAddSubmit);
   $('#add-input').addEventListener('input', () => {
@@ -608,7 +625,7 @@ function onRoom() {
   renderDevice();
   renderQueue();
   if (S.dialog === 'people') renderPeople(true);
-  if (S.dialog === 'history') renderHistory(true);
+  renderHistory();
   loadRecs();
   playerSync();
   tick();
@@ -754,28 +771,57 @@ const ago = (t) => {
   return min < 1 ? 'just now' : min < 60 ? `${min} min ago` : `${Math.floor(min / 60)} h ${min % 60} min ago`;
 };
 
-// Songs the party has already played or skipped, newest first. Each can be queued again.
-function renderHistory(onlyIfChanged) {
+// The history sidebar: songs the party has already played or skipped, newest first. Each can be queued again.
+// On wide screens it is a column at the left edge. On narrow ones it slides in over the page.
+const HIST_KEY = 'pta-hist'; // remembered per device, like the theme
+const histWide = () => window.matchMedia('(min-width: 1200px)').matches;
+let histOpen = false;
+
+function applyHist(open) {
+  histOpen = open;
+  const room = $('#room');
+  if (!room) return;
+  room.dataset.hist = open ? 'open' : 'closed';
+  const label = open ? 'Hide history' : 'Show history';
+  document.querySelectorAll('.hist-toggle').forEach((b) => { b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', label); b.title = label; });
+  $('#hist')?.toggleAttribute('inert', !open);
+}
+
+function toggleHist(open = !histOpen) {
+  if (histWide()) { try { localStorage.setItem(HIST_KEY, open ? 'open' : 'closed'); } catch { /* storage unavailable */ } } // a phone always starts with it tucked away
+  applyHist(open);
+}
+
+// When the window crosses between the two layouts, go back to that layout's resting state.
+window.matchMedia('(min-width: 1200px)').addEventListener?.('change', (e) => {
+  let saved = null;
+  try { saved = localStorage.getItem(HIST_KEY); } catch { /* storage unavailable */ }
+  applyHist(e.matches && saved !== 'closed');
+});
+
+function renderHistory() {
+  const box = $('#hist-list');
+  if (!box) return;
   const q = S.room.q || {};
   const list = Object.entries(q.hist || {}).map(([id, h]) => ({ id, ...h })).sort((a, b) => b.at - a.at);
   const waiting = new Set([q.now, ...Object.values(q.items || {})].filter(Boolean).map((i) => i.videoId));
   const sig = JSON.stringify([list.map((h) => [h.id, waiting.has(h.videoId), member(h.by)?.name, member(h.by)?.avatar]), Math.floor(S.store.now() / 60000)]);
-  if (onlyIfChanged && S.sig.histDlg === sig) return;
-  S.sig.histDlg = sig;
-  const keep = $('#hist-list')?.scrollTop || 0;
-  const rows = list.map((h) => {
-    const who = h.by === S.uid ? 'You' : memberName(h.by, h.byName);
-    const thumb = /^[\w-]{11}$/.test(h.videoId) ? `<img src="https://i.ytimg.com/vi/${h.videoId}/mqdefault.jpg" alt="" loading="lazy">` : '';
-    return `
-      <li>${thumb}
-        <div class="tk-text"><p class="tk-title">${esc(h.title || 'YouTube video')}</p>
-          <p class="tk-meta"><span class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(h.by)?.avatar, 'av-s')}<span class="stub-name">${esc(who)}</span></span><span class="tk-ch">${esc(ago(h.at))}</span></p></div>
-        <button class="btn line small" data-act="add-hist" data-vid="${esc(h.videoId)}" data-title="${esc(h.title || '')}" data-channel="${esc(h.channel || '')}"${waiting.has(h.videoId) ? ' disabled>In queue' : '>Add again'}</button></li>`;
-  }).join('');
-  openDialog('history', `
-    <header class="dlg-head"><h2 id="dlg-title">Played in this party</h2><button class="icon" data-act="close" aria-label="Close">✕</button></header>
-    ${list.length ? `<p class="dlg-lede">Newest first. Add a song again to hear it once more.</p><ul class="results scroll" id="hist-list">${rows}</ul>` : '<p class="dlg-lede">Nothing yet. Songs show up here once they have played or been skipped.</p>'}`);
-  if ($('#hist-list')) $('#hist-list').scrollTop = keep;
+  once('hist', sig, () => {
+    $('#hist-empty').hidden = list.length > 0;
+    box.hidden = !list.length;
+    const keep = box.scrollTop;
+    box.innerHTML = list.map((h) => {
+      const who = h.by === S.uid ? 'You' : memberName(h.by, h.byName);
+      const thumb = /^[\w-]{11}$/.test(h.videoId) ? `<img src="https://i.ytimg.com/vi/${h.videoId}/mqdefault.jpg" alt="" loading="lazy">` : '';
+      const queued = waiting.has(h.videoId);
+      return `
+        <li>${thumb}
+          <div class="tk-text"><p class="tk-title">${esc(h.title || 'YouTube video')}</p>
+            <p class="tk-meta"><span class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(h.by)?.avatar, 'av-s')}<span class="stub-name">${esc(who)}</span></span><span class="tk-ch">${esc(ago(h.at))}</span></p></div>
+          <button class="icon" data-act="add-hist" data-vid="${esc(h.videoId)}" data-title="${esc(h.title || '')}" data-channel="${esc(h.channel || '')}" ${queued ? 'disabled aria-label="Already in the queue" title="Already in the queue"' : `aria-label="Add ${esc(h.title || 'this song')} again" title="Add again"`}>${queued ? ICON.check : ICON.plus}</button></li>`;
+    }).join('');
+    box.scrollTop = keep;
+  });
 }
 
 function openRename() {
@@ -1350,11 +1396,11 @@ const ACTIONS = {
   rename: () => openRename(),
   invite: () => openInvite(),
   people: () => renderPeople(),
-  history: () => renderHistory(),
+  history: () => toggleHist(),
   'add-hist': async (el) => {
     el.disabled = true;
     const ok = await addSong(el.dataset.vid, { title: el.dataset.title || 'YouTube video', channel: el.dataset.channel });
-    if (!ok) el.disabled = false; // on success the list redraws and shows "In queue"
+    if (!ok) el.disabled = false; // on success the list redraws with a tick
   },
   close: () => closeDialog(),
   leave: () => { leaveRoom(false); setPartyParam(''); route(); },
@@ -1438,6 +1484,8 @@ document.addEventListener('toggle', (e) => {
 }, true);
 document.addEventListener('scroll', closeMenus, true);
 window.addEventListener('resize', closeMenus);
+// Escape tucks the history away when it is covering the page.
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && histOpen && !histWide() && !$('#dlg').open) toggleHist(false); });
 
 document.addEventListener('keydown', (e) => {
   if (e.target.id !== 'bar' || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;

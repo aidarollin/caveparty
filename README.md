@@ -17,8 +17,10 @@ see who queued what.
 - The search box predicts what you are typing. A search shows up to 50 videos at once, and
   "Show more results" loads the next 50.
 - Under the search box, "Suggested next" lists songs that go with what is playing.
-- The History button under the player lists the last 50 songs the party played or skipped,
-  newest first, and any of them can be added again.
+- A History sidebar on the left lists the last 50 songs the party played or skipped, newest
+  first, and any of them can be added again. The button beside the party name hides and
+  shows it. On a wide screen it is a column of its own and the app remembers whether you
+  hid it. On a phone it slides in over the page.
 - Everyone sees how many people are in the party and who they are.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
