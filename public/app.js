@@ -37,6 +37,7 @@ const ICON = {
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
+  history: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>',
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>'
 };
 
@@ -525,6 +526,7 @@ function mountRoom() {
           <p class="tap-hint" id="tap-hint" hidden>Press play on the video above to start the music.</p>
           <div class="np" id="np"></div>
           <div class="device" id="device"></div>
+          <div class="stage-foot"><button class="btn line small" data-act="history" title="Songs this party has played">${ICON.history}History</button></div>
         </section>
         <section class="side" aria-label="Queue">
           <div class="q-head">
@@ -606,6 +608,7 @@ function onRoom() {
   renderDevice();
   renderQueue();
   if (S.dialog === 'people') renderPeople(true);
+  if (S.dialog === 'history') renderHistory(true);
   loadRecs();
   playerSync();
   tick();
@@ -744,6 +747,35 @@ function renderPeople(onlyIfChanged) {
     <p class="dlg-lede">The music plays on one device. Choose "Play here" to move it to another one.</p>
     <ul class="people">${rows}</ul>
     <button class="link danger" data-act="leave">Leave this party</button>`);
+}
+
+const ago = (t) => {
+  const min = Math.max(0, Math.round((S.store.now() - (t || 0)) / 60000));
+  return min < 1 ? 'just now' : min < 60 ? `${min} min ago` : `${Math.floor(min / 60)} h ${min % 60} min ago`;
+};
+
+// Songs the party has already played or skipped, newest first. Each can be queued again.
+function renderHistory(onlyIfChanged) {
+  const q = S.room.q || {};
+  const list = Object.entries(q.hist || {}).map(([id, h]) => ({ id, ...h })).sort((a, b) => b.at - a.at);
+  const waiting = new Set([q.now, ...Object.values(q.items || {})].filter(Boolean).map((i) => i.videoId));
+  const sig = JSON.stringify([list.map((h) => [h.id, waiting.has(h.videoId), member(h.by)?.name, member(h.by)?.avatar]), Math.floor(S.store.now() / 60000)]);
+  if (onlyIfChanged && S.sig.histDlg === sig) return;
+  S.sig.histDlg = sig;
+  const keep = $('#hist-list')?.scrollTop || 0;
+  const rows = list.map((h) => {
+    const who = h.by === S.uid ? 'You' : memberName(h.by, h.byName);
+    const thumb = /^[\w-]{11}$/.test(h.videoId) ? `<img src="https://i.ytimg.com/vi/${h.videoId}/mqdefault.jpg" alt="" loading="lazy">` : '';
+    return `
+      <li>${thumb}
+        <div class="tk-text"><p class="tk-title">${esc(h.title || 'YouTube video')}</p>
+          <p class="tk-meta"><span class="stub" title="Queued by ${esc(who)}">${avatarHTML(member(h.by)?.avatar, 'av-s')}<span class="stub-name">${esc(who)}</span></span><span class="tk-ch">${esc(ago(h.at))}</span></p></div>
+        <button class="btn line small" data-act="add-hist" data-vid="${esc(h.videoId)}" data-title="${esc(h.title || '')}" data-channel="${esc(h.channel || '')}"${waiting.has(h.videoId) ? ' disabled>In queue' : '>Add again'}</button></li>`;
+  }).join('');
+  openDialog('history', `
+    <header class="dlg-head"><h2 id="dlg-title">Played in this party</h2><button class="icon" data-act="close" aria-label="Close">✕</button></header>
+    ${list.length ? `<p class="dlg-lede">Newest first. Add a song again to hear it once more.</p><ul class="results scroll" id="hist-list">${rows}</ul>` : '<p class="dlg-lede">Nothing yet. Songs show up here once they have played or been skipped.</p>'}`);
+  if ($('#hist-list')) $('#hist-list').scrollTop = keep;
 }
 
 function openRename() {
@@ -1104,12 +1136,21 @@ function shuffleQueue() {
 
 /* ---------- queue actions ---------- */
 
+const HISTORY_MAX = 50;
+
 function advance(expectId, note) {
   const t = S.store.now();
   return S.store.tx(`${base()}/q`, (q) => {
     q = q || {};
     const curId = q.now ? q.now.id : null;
     if (curId !== expectId) return q; // someone else already moved the queue on
+    if (q.now) {
+      // Keep the song that is ending in the party's history (the newest 50).
+      const hist = q.hist || {}, old = q.now;
+      hist[old.id] = { videoId: old.videoId || '', title: old.title || 'YouTube video', channel: old.channel || '', by: old.by || '', byName: old.byName || '', at: t };
+      Object.keys(hist).sort((a, b) => hist[b].at - hist[a].at).slice(HISTORY_MAX).forEach((id) => { delete hist[id]; });
+      q.hist = hist;
+    }
     const items = q.items || {};
     const next = Object.entries(items).sort((a, b) => a[1].order - b[1].order)[0];
     if (next) {
@@ -1309,6 +1350,12 @@ const ACTIONS = {
   rename: () => openRename(),
   invite: () => openInvite(),
   people: () => renderPeople(),
+  history: () => renderHistory(),
+  'add-hist': async (el) => {
+    el.disabled = true;
+    const ok = await addSong(el.dataset.vid, { title: el.dataset.title || 'YouTube video', channel: el.dataset.channel });
+    if (!ok) el.disabled = false; // on success the list redraws and shows "In queue"
+  },
   close: () => closeDialog(),
   leave: () => { leaveRoom(false); setPartyParam(''); route(); },
   'play-here': () => setPlayer(S.uid),

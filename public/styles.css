@@ -316,6 +316,10 @@ input[type="text"]::placeholder { color: var(--text-3); }
   display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
   margin-top: 20px; padding: 12px 14px; background: var(--hover); border-radius: 14px;
 }
+.stage-foot { display: flex; justify-content: flex-start; margin-top: 14px; }
+.stage-foot .btn { min-height: 36px; padding: 4px 14px; font-size: 13px; }
+.dlg .results { margin: 0 -8px; }
+.dlg .results.scroll { max-height: min(60vh, 520px); }
 .device-text { flex: 1; min-width: 150px; }
 .device-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sub { font-size: 13px; color: var(--text-2); }
@@ -451,7 +455,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
   .stage:has(.screen[data-mode="remote"]) .screen { grid-column: 1; grid-row: 1 / span 3; aspect-ratio: 1; border-radius: 10px; }
   .stage:has(.screen[data-mode="remote"]) #poster { transform: scale(1.34); } /* crops the black bars YouTube bakes into its 4:3 thumbnails */
   .stage:has(.screen[data-mode="remote"]) .np { display: contents; }
-  .stage:has(.screen[data-mode="remote"]) .np > *, .stage:has(.screen[data-mode="remote"]) .device { grid-column: 1 / -1; }
+  .stage:has(.screen[data-mode="remote"]) .np > *, .stage:has(.screen[data-mode="remote"]) .device, .stage:has(.screen[data-mode="remote"]) .stage-foot { grid-column: 1 / -1; }
   .stage:has(.screen[data-mode="remote"]) .np > .np-by, .stage:has(.screen[data-mode="remote"]) .np > .np-title, .stage:has(.screen[data-mode="remote"]) .np > .np-ch { grid-column: 2; }
   .stage:has(.screen[data-mode="remote"]) .np-by { margin-top: 2px; }
   .stage:has(.screen[data-mode="remote"]) .np-title { font-size: 20px; margin-top: 6px; }

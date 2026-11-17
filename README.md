@@ -17,6 +17,8 @@ see who queued what.
 - The search box predicts what you are typing. A search shows up to 50 videos at once, and
   "Show more results" loads the next 50.
 - Under the search box, "Suggested next" lists songs that go with what is playing.
+- The History button under the player lists the last 50 songs the party played or skipped,
+  newest first, and any of them can be added again.
 - Everyone sees how many people are in the party and who they are.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
@@ -149,6 +151,6 @@ one place.
 rooms/{CODE}/meta        name (only when renamed), createdAt, createdBy
 rooms/{CODE}/player      uid of the device that plays the music
 rooms/{CODE}/members     one entry per device: name, avatar, device, online
-rooms/{CODE}/q           now (current song), items (the queue), state, position
+rooms/{CODE}/q           now (current song), items (the queue), hist (played songs), state, position
 search/{hash}            saved search results, shared by every party, kept for a week
 ```
