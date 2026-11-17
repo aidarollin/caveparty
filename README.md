@@ -28,8 +28,8 @@ see who queued what.
 - The party is named after the owner of the playing device, for example "Zul's party".
   Anyone can rename it. Clearing the name goes back to the automatic one.
 - Invite people with a link, a QR code, or a five-letter party code.
-- Light and dark mode. The app follows the device setting until someone uses the sun or
-  moon button, and then remembers that choice on that device.
+- Four themes, two of them with a light and a dark mode, chosen in the profile dialog and
+  remembered on that device. See "Themes" below.
 
 ## Try it on your computer first (no setup)
 
@@ -133,9 +133,9 @@ If the key only allows your live site, search does not work when you run the sit
 ## Files
 
 ```
-public/index.html        page shell, picks Cave or Daylight before the first paint
-public/styles.css        brand tokens (Cave and Daylight) and all styling
-public/music-color.js    makes the room take its colours from the song artwork
+public/index.html        page shell, sets the saved theme before the first paint
+public/styles.css        colour tokens for every theme, and all styling
+public/music-color.js    reads the song artwork and does the colour maths (brand kit, unchanged)
 public/favicon.*, icon-*.png, apple-touch-icon.png, site.webmanifest, cave-party-*.svg
                          the disco ball: browser tab, home screen icons and source artwork
 public/app.js            the whole app (profile, party, queue, player)
@@ -147,33 +147,52 @@ firebase.json            hosting and rules deploy config
 
 ## How it looks
 
-Cave Party is frosted glass over a lit ground. Cave is the dark theme and the default: deep
-midnight with a mint light in the top left corner and a periwinkle light in the top right.
-Daylight is the light theme. The artwork of the song that is playing glows, blurred, behind
-the panels. Mint is the one accent: it marks the next thing to do and the thing that is live.
+Cave Party is frosted glass over a lit ground. The artwork of the song that is playing glows,
+blurred, behind the panels, and two soft lights sit in the top corners. One accent colour
+marks the next thing to do and the thing that is live.
 
-The colours, the display face (Bricolage Grotesque for the name and titles, Figtree for
-everything else) and the icons come from the Cave Party brand kit. Every colour is a token
-at the top of `public/styles.css`, once for Cave and once for Daylight, with the same names
-as the kit's `tokens.css`.
+### Themes
+
+Each person picks a theme for their own device. It is in the profile dialog (the avatar button
+at the top, or Edit on the start screen), under the name and avatar. A pick applies at once
+and is remembered on that device. Other people keep their own choice.
+
+| Theme | Look | Light mode | Takes colours from the song |
+| --- | --- | --- | --- |
+| Classic (the default) | Near black with a green accent | Yes | No |
+| Midnight mint | The Cave Party brand colours: midnight with mint | Yes | Yes |
+| App colours | Cobalt with sun yellow, the colours the app started with | No | Yes |
+| Night market | Plum night with pink neon and a lantern light | No | Yes |
+
+Until someone picks a mode, the app follows the light or dark setting of the device. Titles
+use the same typeface (Figtree) in every theme.
+
+Every colour is a token at the top of `public/styles.css`, one block per theme and mode, all
+with the same names. To add a theme, add a block there and one line to `PALETTES` in
+`public/app.js`. The Midnight mint values and the icons come from the Cave Party brand kit.
 
 ### The room follows the song
 
-`public/music-color.js` (from the brand kit, unchanged) reads the artwork of the playing
-song and fades the background, the glass, the dialogs and the two corner lights to colours
-taken from it. Only the hue and strength come from the song. Lightness stays with the brand,
-and text and mint never change. It runs on every device in the party. Artwork that is nearly
-black and white keeps the brand colours, and so does the moment when nothing plays.
+In every theme except Classic, the app reads the artwork of the playing song and fades the
+background, the glass, the dialogs and the two corner lights to colours taken from it. Only
+the hue and strength come from the song. Lightness stays with the theme, and text and the
+accent never change. It runs on every device in the party. Artwork that is nearly black and
+white keeps the theme's own colours, and so does the moment when nothing plays.
+
+Reading the artwork and the colour maths come from `public/music-color.js` (from the brand
+kit, unchanged). Midnight mint uses that script's own recipe. App colours and Night market
+keep each colour's own lightness and strength and take the hue from the song.
 
 YouTube's thumbnail host allows other sites to read its pictures, so this works in the
 browser with no proxy.
 
-Two choices keep quiet text readable for every song:
+Choices that keep quiet text readable for every song, in every theme:
 
 - Text fields sit on the solid page colour instead of on the glass, so the placeholder has
   the same contrast whatever artwork is behind the panel.
-- The two icons in the top corners use the main text colour, because the lights and the
+- The icon in the top left corner uses the main text colour, because the lights and the
   artwork are strongest there.
+- App colours lets less of the artwork through, because its ground is bright already.
 
 ## How the data is shaped
 

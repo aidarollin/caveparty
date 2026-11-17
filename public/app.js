@@ -34,8 +34,6 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 12.1a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9zm4 2v8h2v-8zm4 0v8h2v-8z"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.6 8l-1.4-1.4z"/></svg>',
@@ -44,28 +42,168 @@ const ICON = {
   search: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>'
 };
 
-/* ---------- light and dark mode ---------- */
+/* ---------- themes ---------- */
+// A theme is a palette (classic, mint, app, market) plus, where the palette has both, a mode (dark or light).
 // The choice is kept per device, outside the profile, so it also holds in demo mode and before joining.
+// The colours themselves live in styles.css. "song" says how a palette reacts to the artwork of the playing song:
+// "none" keeps its colours, "kit" uses the Cave Party brand recipe in music-color.js, and "derive" keeps each
+// colour's own lightness and strength and takes only the hue from the song.
 
-const THEME_KEY = 'pta-theme';
-const themeNow = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+const THEME_KEY = 'pta-theme';     // the mode, once someone has picked one on this device
+const PALETTE_KEY = 'pta-palette';
+const PALETTES = {
+  classic: { name: 'Classic', modes: ['dark', 'light'], song: 'none' },
+  mint: { name: 'Midnight mint', modes: ['dark', 'light'], song: 'kit' },
+  app: { name: 'App colours', modes: ['dark'], song: 'derive' },
+  market: { name: 'Night market', modes: ['dark'], song: 'derive' }
+};
+const root = document.documentElement;
+const paletteNow = () => (PALETTES[root.dataset.palette] ? root.dataset.palette : 'classic');
+const themeNow = () => (root.dataset.theme === 'light' ? 'light' : 'dark');
 const savedTheme = () => { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch { return null; } };
-const themeLabel = (t) => `Switch to ${t === 'light' ? 'dark' : 'light'} mode`;
-const themeButtonHTML = () => { const t = themeNow(); return `<button class="icon" data-act="theme" aria-label="${themeLabel(t)}" title="${themeLabel(t)}">${t === 'light' ? ICON.moon : ICON.sun}</button>`; };
+// Follow the system setting until someone picks a mode on this device.
+const wantedMode = () => savedTheme() || (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 
-function applyTheme(t) {
-  document.documentElement.dataset.theme = t;
-  $('meta[name="theme-color"]')?.setAttribute('content', t === 'light' ? '#F4F6FF' : '#0D1140');
-  document.querySelectorAll('[data-act="theme"]').forEach((b) => {
-    b.innerHTML = t === 'light' ? ICON.moon : ICON.sun;
-    b.setAttribute('aria-label', themeLabel(t));
-    b.title = themeLabel(t);
-  });
-  window.CaveMusicColor?.refresh(); // the colours taken from the song are different in each theme
+function applyLook(palette = paletteNow(), mode = wantedMode()) {
+  const id = PALETTES[palette] ? palette : 'classic';
+  root.dataset.palette = id;
+  root.dataset.theme = PALETTES[id].modes.includes(mode) ? mode : PALETTES[id].modes[0];
+  refreshRoom(); // the colours taken from the song are made again for this theme
+  $('meta[name="theme-color"]')?.setAttribute('content', restTokens().raw['--bg']); // the browser bar takes the resting page colour
 }
-applyTheme(themeNow());
-// Follow the system setting until someone picks a side on this device.
-window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', (e) => { if (!savedTheme()) applyTheme(e.matches ? 'light' : 'dark'); });
+
+/* ---------- the room takes its colour from the song ---------- */
+// While a song plays, the page background, the raised surfaces, the frosted glass and the two corner lights fade
+// to colours read from its artwork. Text and the accent never change, and every colour keeps the lightness of the
+// colour it replaces, so contrast is the same for every song. Reading the artwork and the colour maths come from
+// music-color.js (the Cave Party brand kit, loaded unchanged). This runs on every device, not only the one playing.
+
+const MC = window.CaveMusicColor;
+const SONG_VARS = ['--bg', '--surface', '--surface-2', '--menu', '--glass', '--sheet', '--glow-a', '--glow-b'];
+const RC = { music: null, ticket: 0, raf: 0, cur: null, kit: false, rest: {} };
+
+// The resting value of each of those colours in the current theme: as written in the stylesheet, and as
+// [lightness, chroma, hue, alpha]. Read once per theme, with any song colours lifted off for the moment.
+function restTokens() {
+  const key = `${paletteNow()}:${themeNow()}`;
+  if (RC.rest[key]) return RC.rest[key];
+  const inline = SONG_VARS.map((v) => root.style.getPropertyValue(v));
+  SONG_VARS.forEach((v) => root.style.removeProperty(v));
+  const cs = getComputedStyle(root), probe = document.body.appendChild(document.createElement('span'));
+  const out = { raw: {}, lch: {} };
+  for (const v of SONG_VARS) {
+    out.raw[v] = cs.getPropertyValue(v).trim();
+    probe.style.color = out.raw[v];
+    const m = (getComputedStyle(probe).color.match(/[\d.]+/g) || [0, 0, 0]).map(Number);
+    const c = MC ? MC.rgbToOklch(m[0], m[1], m[2]) : [0, 0, 0];
+    out.lch[v] = [c[0], c[1], c[2], m.length > 3 ? m[3] : 1];
+  }
+  probe.remove();
+  SONG_VARS.forEach((v, i) => { if (inline[i]) root.style.setProperty(v, inline[i]); });
+  return (RC.rest[key] = out);
+}
+
+// For the "derive" palettes: same lightness and alpha, the song's hue. Dull artwork gives a quieter tint.
+// Greys stay grey. The first corner light takes the main colour of the artwork and the second its second colour.
+function songColours(rest, music) {
+  const out = {};
+  for (const v of SONG_VARS) {
+    const [L, C, h, alpha] = rest.lch[v], light = v.startsWith('--glow');
+    out[v] = C < 0.015 ? [L, C, h, alpha] : [L, light ? C : C * music.k, v === '--glow-b' ? music.h2 : music.h, alpha];
+  }
+  return out;
+}
+
+function fadeRoom(to, duration, handBack) {
+  cancelAnimationFrame(RC.raf);
+  const from = RC.cur || restTokens().lch;
+  const paint = (t) => {
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in and out
+    const now = {};
+    for (const v of SONG_VARS) {
+      const a = from[v], b = to[v];
+      const ha = a[1] < 0.004 ? b[2] : a[2], hb = b[1] < 0.004 ? a[2] : b[2]; // a grey borrows the other colour's hue
+      const dh = ((hb - ha + 540) % 360) - 180;                               // hue takes the short way round
+      now[v] = [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, (ha + dh * e + 360) % 360, a[3] + (b[3] - a[3]) * e];
+      root.style.setProperty(v, MC.css(now[v]));
+    }
+    RC.cur = now;
+    if (t === 1 && handBack) { SONG_VARS.forEach((v) => root.style.removeProperty(v)); RC.cur = null; } // back to the stylesheet
+  };
+  if (!duration) return paint(1);
+  let start = null;
+  const frame = (ts) => { if (start === null) start = ts; const t = Math.min(1, (ts - start) / duration); paint(t); if (t < 1) RC.raf = requestAnimationFrame(frame); };
+  RC.raf = requestAnimationFrame(frame);
+}
+
+function paintRoom(duration = 1400) {
+  if (!MC) return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) duration = 0;
+  const how = PALETTES[paletteNow()].song;
+  if (how === 'kit') {
+    cancelAnimationFrame(RC.raf); RC.cur = null; RC.kit = true;
+    MC.apply(RC.music, { theme: themeNow() === 'light' ? 'daylight' : 'cave', duration });
+    return;
+  }
+  if (RC.kit) { MC.apply(null, { duration: 0 }); RC.kit = false; } // stop the brand recipe and lift its colours off
+  const rest = restTokens();
+  if (how === 'derive' && RC.music) fadeRoom(songColours(rest, RC.music), duration, false);
+  else if (RC.cur) fadeRoom(rest.lch, duration, true);
+  else SONG_VARS.forEach((v) => root.style.removeProperty(v));
+}
+
+// After a change of theme: drop what was painted for the old one and paint the new one at once.
+function refreshRoom() {
+  cancelAnimationFrame(RC.raf); RC.cur = null;
+  if (!RC.kit) SONG_VARS.forEach((v) => root.style.removeProperty(v));
+  paintRoom(0);
+}
+
+// url: the artwork of the playing song, or '' when nothing plays. Artwork that is nearly black and white, or
+// that cannot be read, gives null and the theme keeps its own colours.
+function followRoom(url) {
+  const ticket = ++RC.ticket;
+  if (!MC) return;
+  if (!url) { RC.music = null; paintRoom(); return; }
+  MC.fromUrl(url).then((music) => { if (ticket !== RC.ticket) return; RC.music = music; paintRoom(); }); // a skipped song is ignored
+}
+
+applyLook();
+window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', () => { if (!savedTheme()) applyLook(); });
+
+// The theme chooser. It sits in the profile dialog, under the name and avatar. A pick applies at once and is kept
+// on this device. It does not wait for "Save changes", which is only for the name, avatar and device.
+function themeSectionHTML() {
+  const pal = paletteNow(), mode = themeNow(), cur = PALETTES[pal];
+  const cards = Object.entries(PALETTES).map(([id, t]) => `
+    <button type="button" class="theme-card" role="radio" aria-checked="${id === pal}" data-act="pick-palette" data-palette="${id}">
+      <span class="theme-swatch" data-palette="${id}" data-theme="${t.modes.includes(mode) ? mode : t.modes[0]}" aria-hidden="true"><i class="sw-panel"></i><i class="sw-title"></i><i class="sw-quiet"></i><i class="sw-bar"></i><i class="sw-dot"></i></span>
+      <span class="theme-name">${esc(t.name)}${id === 'classic' ? '<small>Default</small>' : ''}</span>
+    </button>`).join('');
+  const modes = cur.modes.length > 1
+    ? `<div class="mode-row"><span class="label" id="mode-label">Mode</span>
+        <div class="seg" role="radiogroup" aria-labelledby="mode-label">${cur.modes.map((m) => `<button type="button" role="radio" aria-checked="${m === mode}" data-act="pick-mode" data-mode="${m}">${m === 'dark' ? 'Dark' : 'Light'}</button>`).join('')}</div></div>`
+    : `<p class="hint">${esc(cur.name)} has one look, so there is no light mode.</p>`;
+  return `
+    <h3 id="theme-title">Theme</h3>
+    <p class="hint">How the party looks on this device. Everyone else keeps their own choice.</p>
+    <div class="theme-grid" role="radiogroup" aria-labelledby="theme-title">${cards}</div>
+    ${modes}
+    <p class="hint">${cur.song === 'none' ? 'Classic keeps its own colours. The other themes take colours from the song that is playing.' : `${esc(cur.name)} takes colours from the song that is playing.`}</p>`;
+}
+
+// Redraws only the theme part, so a name or photo that is being edited above it is not lost.
+function renderThemeSection(focus) {
+  const sec = $('#theme-sec');
+  if (!sec) return;
+  sec.innerHTML = themeSectionHTML();
+  if (focus) $(focus, sec)?.focus();
+}
+
+function pickLook(palette, mode) {
+  try { localStorage.setItem(PALETTE_KEY, palette); if (mode) localStorage.setItem(THEME_KEY, mode); } catch { /* storage unavailable */ }
+  applyLook(palette, mode || wantedMode());
+}
 
 // The blurred artwork of the current song, shown behind the glass panels.
 function setArt(videoId) {
@@ -74,9 +212,7 @@ function setArt(videoId) {
   const url = videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : '';
   if (el.dataset.url === url) return;
   el.dataset.url = url;
-  // The room takes its colour from the song: background, glass and the two corner lights fade to colours read from
-  // the artwork. This runs on every device, not only the one playing. If the picture cannot be read, nothing changes.
-  if (url) window.CaveMusicColor?.follow(url); else window.CaveMusicColor?.clear();
+  followRoom(url);
   if (!url) { el.classList.remove('on'); return; }
   const img = new Image(); // swap only once the new picture has loaded, so the backdrop never flashes empty
   img.onload = () => { if (el.dataset.url !== url) return; el.style.backgroundImage = `url("${url}")`; el.classList.add('on'); };
@@ -300,7 +436,7 @@ function setPartyParam(code) {
 }
 
 function shell(inner) {
-  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><img class="brand-mark" src="favicon.svg" alt="" width="28" height="28">Cave Party</p>${themeButtonHTML()}</header>${inner}</main>`;
+  $('#app').innerHTML = `<main class="solo"><header class="solo-top"><p class="brand"><img class="brand-mark" src="favicon.svg" alt="" width="28" height="28">Cave Party</p></header>${inner}</main>`;
 }
 
 function profileFormHTML(p, cta) {
@@ -520,8 +656,7 @@ function mountRoom() {
         <div class="top-actions">
           <button class="people-chip" data-act="people" id="people-chip"></button>
           <button class="btn primary small" data-act="invite">Invite</button>
-          ${themeButtonHTML()}
-          <button class="me-btn" data-act="edit-profile" id="me-btn" aria-label="Edit your name and avatar"></button>
+          <button class="me-btn" data-act="edit-profile" id="me-btn" aria-label="Your profile and theme" title="Your profile and theme"></button>
         </div>
       </header>
       <div class="cols">
@@ -881,8 +1016,9 @@ function openInvite() {
 
 function openProfile() {
   const d = openDialog('profile', `
-    <header class="dlg-head"><h2 id="dlg-title">Your name and avatar</h2><button class="icon" data-act="close" aria-label="Close">✕</button></header>
-    ${profileFormHTML(S.profile, 'Save changes')}`);
+    <header class="dlg-head"><h2 id="dlg-title">Your profile</h2><button class="icon" data-act="close" aria-label="Close">✕</button></header>
+    ${profileFormHTML(S.profile, 'Save changes')}
+    <section class="theme-sec" id="theme-sec">${themeSectionHTML()}</section>`);
   bindProfileForm(d, S.profile, (p) => {
     saveProfile(p);
     closeDialog();
@@ -1453,7 +1589,8 @@ const ACTIONS = {
   'play-here': () => setPlayer(S.uid),
   'set-player': (el) => { setPlayer(el.dataset.uid); closeDialog(); },
   tap: () => { showTap(false); P.tapTried = true; try { P.yt.playVideo(); } catch { /* player gone */ } armTapCheck(); },
-  theme: () => { const t = themeNow() === 'light' ? 'dark' : 'light'; try { localStorage.setItem(THEME_KEY, t); } catch { /* storage unavailable */ } applyTheme(t); },
+  'pick-palette': (el) => { pickLook(el.dataset.palette); renderThemeSection('.theme-card[aria-checked="true"]'); },
+  'pick-mode': (el) => { pickLook(paletteNow(), el.dataset.mode); renderThemeSection('.seg [aria-checked="true"]'); },
   toggle: () => {
     const q = S.room?.q || {};
     if (!q.now) return;
