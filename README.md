@@ -212,22 +212,23 @@ picked it.
 
 ### Photo avatars
 
-Choosing a photo opens an editor in place of the avatar picker. Drag the photo to move it, and
-zoom with the slider, the mouse wheel or a two finger pinch. Arrow keys nudge it and plus and
-minus zoom. Rotate turns it a quarter turn, Brightness and Contrast adjust the tone, and Reset
-puts everything back. What is inside the circle becomes the avatar: a 128 pixel square.
-Cancel, or Escape, leaves the old avatar as it was. A name or device being typed above is not
-lost, and the form cannot be saved while the editor is open.
+Choosing a photo opens an editor in a popup over the profile dialog. Drag the photo to move
+it, and zoom with the slider, the mouse wheel or a two finger pinch. Arrow keys nudge it and
+plus and minus zoom. The round arrow on the photo turns it a quarter turn, Brightness and
+Contrast adjust the tone, and Reset puts everything back. What is inside the circle becomes
+the avatar: a 128 pixel square. Use photo keeps it. Cancel, the cross, Escape or a click
+outside leave the old avatar as it was. Because the editor is its own popup, a name or device
+being typed in the profile dialog is never touched.
 
-Once a photo is the avatar, an Edit photo button next to it opens the editor again, with the
-framing, zoom and tone where they were left. It edits the original photo, not the small
+Once a photo is the avatar, a pencil icon inside the photo box opens the editor again, with
+the framing, zoom and tone where they were left. It edits the original photo, not the small
 result, so a crop can be undone or moved.
 
 - Only the 128 pixel result is shared with the party.
 - The original is kept on that device only, as a copy of at most 900 pixels on a side (a few
   hundred kilobytes at most), so it can be edited again later. It is never sent anywhere.
-  Clearing the browser's site data removes it, and Edit photo then works from the small
-  result instead.
+  Clearing the browser's site data removes it, and the pencil then edits the small result
+  instead.
 - A see-through PNG gets a white background.
 
 ## How the data is shaped

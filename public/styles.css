@@ -324,6 +324,8 @@ a { color: inherit; text-underline-offset: 3px; }
 .btn.primary:hover { background: var(--accent-hi); transform: scale(1.03); }
 .btn.line { background: transparent; border-color: var(--line-strong); color: var(--text); }
 .btn.line:hover { border-color: var(--text); transform: scale(1.03); }
+.btn.quiet { background: var(--hover-2); color: var(--text); }
+.btn.quiet:hover { background: var(--line-strong); transform: scale(1.03); }
 .btn.wide:hover { transform: scale(1.01); }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.5; cursor: default; transform: none; }
@@ -403,10 +405,12 @@ input[type="text"]::placeholder { color: var(--text-3); }
 }
 .av-upload[aria-checked="true"] { border-style: solid; border-width: 2px; }
 .av-upload-text { font-size: 14px; font-weight: 600; }
-.photo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.photo-pick { flex: 1; min-width: 0; display: grid; }
-.photo-row .av-upload { margin-bottom: 0; }
-.photo-row .btn { flex: none; }
+.photo-pick { position: relative; display: grid; margin-bottom: 4px; }
+.photo-pick .av-upload { margin-bottom: 0; padding-right: 64px; }
+/* The pencil sits inside the photo box, at its right edge. */
+.photo-edit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: var(--hover-2); color: var(--text); }
+.photo-edit svg { width: 18px; height: 18px; }
+.photo-edit:hover { background: var(--line-strong); }
 
 /* ---------- the photo editor ---------- */
 .crop { display: grid; gap: 12px; }
@@ -425,8 +429,17 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .crop-controls { display: grid; gap: 6px; }
 .crop-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
 .crop-row input[type="range"] { width: 100%; min-height: 32px; margin: 0; accent-color: var(--accent-text); background: none; }
-.crop-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.crop-actions .btn { width: 100%; }
+.crop-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.crop-actions [data-c="reset"] { margin-right: auto; }
+/* Rotate is an icon on the photo itself, at its bottom right corner. */
+.crop-rotate {
+  position: absolute; right: 10px; bottom: 10px; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: rgba(6, 6, 16, 0.62); color: #fff; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transition: background-color 0.12s ease;
+}
+.crop-rotate:hover { background: rgba(6, 6, 16, 0.82); }
+.crop-rotate svg { width: 20px; height: 20px; }
+.crop-body { display: block; }
 .av-cam { background: var(--hover-2); color: var(--text); }
 .av-cam svg { width: 26px; height: 26px; }
 
@@ -685,7 +698,7 @@ input[type="text"]::placeholder { color: var(--text-3); }
 .theme-sec h3 { margin: 0 0 10px; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
 .theme-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .theme-card {
-  display: grid; justify-items: center; gap: 8px; padding: 10px 2px 8px;
+  display: grid; justify-items: center; gap: 6px; padding: 8px 2px 6px;
   background: none; border: 0; border-radius: 14px;
   transition: background-color 0.12s ease;
 }
@@ -695,11 +708,11 @@ input[type="text"]::placeholder { color: var(--text-3); }
 /* A theme in one dot, cut in two: the left half is its ground and the right half is its accent. Painted with
    that theme's own tokens. The one that is picked gets a ring. */
 .theme-swatch {
-  position: relative; display: block; width: 44px; height: 44px; border-radius: 50%;
+  position: relative; display: block; width: 28px; height: 28px; border-radius: 50%;
   background: linear-gradient(90deg, var(--bg) 50%, var(--accent) 50%);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
-.theme-card[aria-checked="true"] .theme-swatch { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.theme-card[aria-checked="true"] .theme-swatch { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
 /* ---------- toasts ---------- */
 #toasts {

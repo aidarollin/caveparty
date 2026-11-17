@@ -1,7 +1,7 @@
 // Cave Party: a shared song queue for a party. Share the aux.
 // One device plays the music (YouTube), everyone else queues and reorders songs.
 
-import { loadImage, shrink, mountEditor } from './photo-editor.js';
+import { loadImage, shrink, openPhotoEditor } from './photo-editor.js';
 
 const CFG = window.PARTY_CONFIG || {};
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/12.19.0';
@@ -455,20 +455,15 @@ function profileFormHTML(p, cta) {
       </div>
       <div class="field">
         <span class="label" id="pf-av-label">Your avatar</span>
-        <div id="pf-av-body">
-          <div class="photo-row">
-            <div class="photo-pick" role="radiogroup" aria-labelledby="pf-av-label">
-              <label class="av-pick av-upload" role="radio" aria-checked="${isPhoto}" id="pf-photo-tile" tabindex="0">
-                <input id="pf-photo" type="file" accept="image/*" hidden>
-                <span id="pf-photo-face">${isPhoto ? avatarHTML(av, 'av-l') : `<span class="av av-l av-cam">${ICON.camera}</span>`}</span>
-                <span class="av-upload-text">${isPhoto ? 'Change photo' : 'Use a photo'}</span>
-              </label>
-            </div>
-            <button type="button" class="btn line small" id="pf-edit"${isPhoto ? '' : ' hidden'}>Edit photo</button>
+          <div class="photo-pick" role="radiogroup" aria-labelledby="pf-av-label">
+            <label class="av-pick av-upload" role="radio" aria-checked="${isPhoto}" id="pf-photo-tile" tabindex="0">
+              <input id="pf-photo" type="file" accept="image/*" hidden>
+              <span id="pf-photo-face">${isPhoto ? avatarHTML(av, 'av-l') : `<span class="av av-l av-cam">${ICON.camera}</span>`}</span>
+              <span class="av-upload-text">${isPhoto ? 'Change photo' : 'Use a photo'}</span>
+            </label>
+            <button type="button" class="icon photo-edit" id="pf-edit" aria-label="Edit photo" title="Edit photo"${isPhoto ? '' : ' hidden'}>${ICON.pencil}</button>
           </div>
           <div class="av-grid" role="radiogroup" aria-labelledby="pf-av-label">${tiles}</div>
-        </div>
-        <div id="pf-crop" hidden></div>
       </div>
       <div class="field">
         <label for="pf-device">This device</label>
@@ -489,32 +484,19 @@ function bindProfileForm(root, initial, onSave) {
   mark();
   root.querySelectorAll('.av-pick[data-av]').forEach((b) => b.addEventListener('click', () => { avatar = b.dataset.av; mark(); }));
   $('#pf-photo-tile', root).addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#pf-photo', root).click(); } });
-  // Choosing a photo, or pressing Edit photo, opens the editor in place of the picker. The name and device the person
-  // has typed stay where they are. The photo is only kept when they press Use photo.
-  let editor = null;
-  const leaveEditor = () => {
-    editor = null;
-    $('#pf-crop', root).hidden = true; $('#pf-crop', root).innerHTML = '';
-    $('#pf-av-body', root).hidden = false;
-    $('#pf .btn[type=submit]', root).disabled = false;
-  };
-  const openEditor = (img, srcUrl, start) => {
-    if (editor) editor.destroy();
-    $('#pf-av-body', root).hidden = true;
-    const box = $('#pf-crop', root); box.hidden = false;
-    $('#pf .btn[type=submit]', root).disabled = true; // so a half-finished edit is not saved by accident
-    editor = mountEditor(box, img, start, {
-      onCancel: () => { leaveEditor(); $('#pf-edit', root).hidden || $('#pf-edit', root).focus(); },
-      onDone: ({ dataUrl, params }) => {
-        avatar = dataUrl;
-        ls.set('photo', { src: srcUrl, edit: params, out: dataUrl }); // the framing and the photo, on this device only
-        $('#pf-photo-face', root).innerHTML = avatarHTML(avatar, 'av-l');
-        $('.av-upload-text', root).textContent = 'Change photo';
-        leaveEditor(); mark();
-        $('#pf-edit', root).focus();
-      }
-    });
-  };
+  // Choosing a photo, or pressing the pencil on it, opens the editor in a popup over the form. The photo is only kept
+  // when they press Use photo, and the name and device they have typed are not touched.
+  const openEditor = (img, srcUrl, start) => openPhotoEditor(img, start, {
+    onCancel: () => {},
+    onDone: ({ dataUrl, params }) => {
+      avatar = dataUrl;
+      ls.set('photo', { src: srcUrl, edit: params, out: dataUrl }); // the framing and the photo, on this device only
+      $('#pf-photo-face', root).innerHTML = avatarHTML(avatar, 'av-l');
+      $('.av-upload-text', root).textContent = 'Change photo';
+      mark();
+      $('#pf-edit', root).focus();
+    }
+  });
   $('#pf-photo', root).addEventListener('change', async (e) => {
     const f = e.target.files[0];
     e.target.value = '';

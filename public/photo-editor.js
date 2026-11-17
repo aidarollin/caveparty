@@ -5,6 +5,8 @@
 // The editor works on a copy of the photo that is at most 900 pixels on a side. That copy is what the app keeps on
 // this device, so a photo can be adjusted again later from the original framing, not from the small result.
 
+const ROTATE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg>';
+
 export const OUT = 128;
 export const DEFAULTS = { zoom: 1, px: 0, py: 0, rot: 0, bright: 1, contrast: 1 };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -74,9 +76,9 @@ export function renderAvatar(img, params) {
   return out.toDataURL('image/jpeg', 0.85);
 }
 
-// Puts the editor into root, replacing what is there. img is the (shrunk) photo, start the saved framing or null.
+// Fills root with the editor. img is the (shrunk) photo, start the saved framing or null.
 // hooks.onDone({ dataUrl, params }) when the person is happy, hooks.onCancel() when they are not.
-// Returns { destroy() }.
+// Returns { destroy() }. openPhotoEditor below puts this into a popup, which is how the app uses it.
 export function mountEditor(root, img, start, hooks) {
   const p = clampParams(img, { ...DEFAULTS, ...(start || {}) });
   root.innerHTML = `
@@ -84,6 +86,7 @@ export function mountEditor(root, img, start, hooks) {
       <p class="hint">Drag the photo to move it. Pinch, scroll or use the slider to zoom.</p>
       <div class="crop-stage" tabindex="0" role="img" aria-label="Photo preview. Drag to move it. Arrow keys nudge it and plus and minus zoom.">
         <canvas class="crop-canvas"></canvas><span class="crop-mask"></span>
+        <button type="button" class="crop-rotate" data-c="rotate" aria-label="Rotate a quarter turn" title="Rotate">${ROTATE}</button>
       </div>
       <div class="crop-controls">
         <label class="crop-row"><span>Zoom</span><input type="range" data-k="zoom" min="1" max="4" step="0.01"></label>
@@ -91,8 +94,7 @@ export function mountEditor(root, img, start, hooks) {
         <label class="crop-row"><span>Contrast</span><input type="range" data-k="contrast" min="0.5" max="1.5" step="0.01"></label>
       </div>
       <div class="crop-actions">
-        <button type="button" class="btn line small" data-c="rotate">Rotate</button>
-        <button type="button" class="btn line small" data-c="reset">Reset</button>
+        <button type="button" class="btn quiet small" data-c="reset">Reset</button>
         <button type="button" class="btn line small" data-c="cancel">Cancel</button>
         <button type="button" class="btn primary small" data-c="done">Use photo</button>
       </div>
@@ -101,9 +103,13 @@ export function mountEditor(root, img, start, hooks) {
   const stage = $('.crop-stage'), canvas = $('.crop-canvas'), sliders = [...root.querySelectorAll('input[type=range]')];
   let raf = 0, gone = false;
 
+  // The sliders always show the real values, even before the editor is on screen. The picture needs a size, so it is
+  // drawn once the popup is visible (see refresh).
+  const syncSliders = () => { for (const s of sliders) { const v = String(p[s.dataset.k]); if (s.value !== v) s.value = v; } };
   const draw = () => {
     raf = 0;
     if (gone) return;
+    syncSliders();
     const S = Math.round(stage.clientWidth), d = Math.min(2, window.devicePixelRatio || 1);
     if (!S) return;
     canvas.width = canvas.height = Math.round(S * d);
@@ -111,7 +117,6 @@ export function mountEditor(root, img, start, hooks) {
     ctx.scale(d, d);
     drawTo(ctx, img, p, S);
     canvas.style.filter = p.bright === 1 && p.contrast === 1 ? '' : `brightness(${p.bright}) contrast(${p.contrast})`;
-    for (const s of sliders) { const v = String(p[s.dataset.k]); if (s.value !== v) s.value = v; }
   };
   const schedule = () => { if (!raf) raf = requestAnimationFrame(draw); };
   const move = (dx, dy) => { p.px += dx; p.py += dy; clampParams(img, p); schedule(); };
@@ -120,6 +125,7 @@ export function mountEditor(root, img, start, hooks) {
   // Drag to move, two fingers to pinch.
   const pts = new Map(); let lastDist = 0;
   stage.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
     try { stage.setPointerCapture(e.pointerId); } catch { /* a pointer that is already gone */ }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     lastDist = 0;
@@ -150,32 +156,42 @@ export function mountEditor(root, img, start, hooks) {
 
   for (const s of sliders) s.addEventListener('input', () => { if (s.dataset.k === 'zoom') zoomTo(Number(s.value)); else { p[s.dataset.k] = Number(s.value); schedule(); } });
 
-  const dlg = root.closest('dialog');
-  const cancel = () => { destroy(); hooks.onCancel(); };
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-c]');
     if (!b) return;
     if (b.dataset.c === 'rotate') { p.rot = (p.rot + 1) % 4; p.px = p.py = 0; clampParams(img, p); schedule(); }
     else if (b.dataset.c === 'reset') { Object.assign(p, DEFAULTS); schedule(); }
-    else if (b.dataset.c === 'cancel') cancel();
+    else if (b.dataset.c === 'cancel') { destroy(); hooks.onCancel(); }
     else if (b.dataset.c === 'done') { const params = { ...p }, dataUrl = renderAvatar(img, params); destroy(); hooks.onDone({ dataUrl, params }); }
   });
-  // Escape closes the editor first. Without this it would close the whole dialog and lose the form.
-  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); } };
-  const onCancelEvent = (e) => { e.preventDefault(); cancel(); };
-  root.addEventListener('keydown', onKey);
-  if (dlg) { dlg.addEventListener('cancel', onCancelEvent); dlg.addEventListener('close', () => destroy(), { once: true }); }
 
   function destroy() {
     if (gone) return;
     gone = true;
     cancelAnimationFrame(raf);
-    if (dlg) dlg.removeEventListener('cancel', onCancelEvent);
-    root.removeEventListener('keydown', onKey);
   }
 
   draw();
-  root.scrollIntoView({ block: 'nearest' });
-  stage.focus({ preventScroll: true });
-  return { destroy };
+  return { destroy, refresh: draw, focus: () => stage.focus({ preventScroll: true }) };
+}
+
+// The editor in a popup on top of whatever is open, such as the profile dialog. Nothing underneath is touched, so a
+// name being typed there is safe. Escape, the cross and a click outside all cancel. Use photo hands the result back.
+export function openPhotoEditor(img, start, hooks) {
+  const dlg = document.createElement('dialog');
+  dlg.className = 'dlg dlg-photo';
+  dlg.setAttribute('aria-labelledby', 'photo-title');
+  dlg.innerHTML = '<header class="dlg-head"><h2 id="photo-title">Adjust your photo</h2><button type="button" class="icon" data-x aria-label="Close" title="Close">\u2715</button></header><div class="crop-body"></div>';
+  document.body.appendChild(dlg);
+  let done = false;
+  const finish = (fn) => { if (done) return; done = true; editor.destroy(); dlg.close(); dlg.remove(); fn(); };
+  const editor = mountEditor(dlg.querySelector('.crop-body'), img, start, {
+    onDone: (r) => finish(() => hooks.onDone(r)),
+    onCancel: () => finish(() => hooks.onCancel())
+  });
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); finish(() => hooks.onCancel()); }); // Escape
+  dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-x]')) finish(() => hooks.onCancel()); });
+  dlg.showModal();
+  editor.refresh(); // now it has a size: draw the photo
+  editor.focus();
 }
