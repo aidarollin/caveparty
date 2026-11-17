@@ -403,6 +403,30 @@ input[type="text"]::placeholder { color: var(--text-3); }
 }
 .av-upload[aria-checked="true"] { border-style: solid; border-width: 2px; }
 .av-upload-text { font-size: 14px; font-weight: 600; }
+.photo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.photo-pick { flex: 1; min-width: 0; display: grid; }
+.photo-row .av-upload { margin-bottom: 0; }
+.photo-row .btn { flex: none; }
+
+/* ---------- the photo editor ---------- */
+.crop { display: grid; gap: 12px; }
+.crop-stage {
+  position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 0 auto; border-radius: 14px; overflow: hidden;
+  background: #fff; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* The circle that will be kept. Everything outside it is dimmed. */
+.crop-mask {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle closest-side, transparent calc(100% - 1px), rgba(6, 6, 16, 0.62) 100%);
+}
+.crop-mask::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9); }
+.crop-controls { display: grid; gap: 6px; }
+.crop-row { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+.crop-row input[type="range"] { width: 100%; min-height: 32px; margin: 0; accent-color: var(--accent-text); background: none; }
+.crop-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.crop-actions .btn { width: 100%; }
 .av-cam { background: var(--hover-2); color: var(--text); }
 .av-cam svg { width: 26px; height: 26px; }
 

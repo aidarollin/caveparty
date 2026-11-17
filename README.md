@@ -9,8 +9,9 @@ see who queued what.
 ## What it does
 
 - People enter a name and pick an avatar the first time: one of twelve meme doodles, or
-  their own photo. The same device remembers them next time, and they can change both from
-  the avatar button.
+  their own photo, which they can move, zoom, rotate and brighten before it is used. The same
+  device remembers them next time, and they can change the name, avatar and photo from the
+  avatar button.
 - One device plays the songs. Everyone sees whose device it is and can move the music to
   any other device in the party.
 - Everyone can search for a song by title, artist or lyrics and add it, drag to reorder,
@@ -139,6 +140,7 @@ public/index.html        page shell, sets the saved theme before the first paint
 public/styles.css        colour tokens for every theme, and all styling
 public/music-color.js    reads the song artwork and does the colour maths (brand kit, unchanged)
 public/avatars.js        the preset avatars: twelve meme doodles, drawn for this app
+public/photo-editor.js   the adjust and crop editor for a photo avatar
 public/favicon.*, icon-*.png, apple-touch-icon.png, site.webmanifest, cave-party-*.svg
                          the disco ball: browser tab, home screen icons and source artwork
 public/app.js            the whole app (profile, party, queue, player)
@@ -207,6 +209,26 @@ flat colours and a silly face. All twelve are original drawings made for this ap
 in `public/avatars.js` as small SVG pictures. A profile stores its pick as a position in that
 list, so add new doodles at the end. Moving or removing one changes the face of everyone who
 picked it.
+
+### Photo avatars
+
+Choosing a photo opens an editor in place of the avatar picker. Drag the photo to move it, and
+zoom with the slider, the mouse wheel or a two finger pinch. Arrow keys nudge it and plus and
+minus zoom. Rotate turns it a quarter turn, Brightness and Contrast adjust the tone, and Reset
+puts everything back. What is inside the circle becomes the avatar: a 128 pixel square.
+Cancel, or Escape, leaves the old avatar as it was. A name or device being typed above is not
+lost, and the form cannot be saved while the editor is open.
+
+Once a photo is the avatar, an Edit photo button next to it opens the editor again, with the
+framing, zoom and tone where they were left. It edits the original photo, not the small
+result, so a crop can be undone or moved.
+
+- Only the 128 pixel result is shared with the party.
+- The original is kept on that device only, as a copy of at most 900 pixels on a side (a few
+  hundred kilobytes at most), so it can be edited again later. It is never sent anywhere.
+  Clearing the browser's site data removes it, and Edit photo then works from the small
+  result instead.
+- A see-through PNG gets a white background.
 
 ## How the data is shaped
 
